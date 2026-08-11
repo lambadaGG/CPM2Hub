@@ -64,7 +64,7 @@ export function Escrow() {
             { value: 'vinyl', label: 'Vinyl Preset' },
           ]}
           value={kind}
-          onChange={setKind}
+          onChange={(v) => setKind(v as 'money' | 'car' | 'vinyl')}
         />
         <label className="field"><span>You Offer</span>
           <input className="text-input" placeholder="What you offer..." value={offer} onChange={(e) => setOffer(e.target.value)} /></label>

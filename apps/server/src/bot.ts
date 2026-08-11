@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Bot } from 'grammY';
+import { Bot } from 'grammy';
 import { eq } from 'drizzle-orm';
 import { db } from './db/index';
 import { products, purchases, users } from './db/schema';

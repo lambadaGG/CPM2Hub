@@ -3,7 +3,6 @@
   "buildCommand": "npm run build -w @gm/web",
   "outputDirectory": "apps/web/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "@gm/server/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -1,0 +1,17 @@
+{
+  "name": "gearmarket",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @gm/web",
+    "dev:server": "npm run dev -w @gm/server",
+    "build": "npm run build -w @gm/web",
+    "start": "npm run start -w @gm/server",
+    "db:push": "npm run db:push -w @gm/server",
+    "typecheck": "npm run typecheck -w @gm/server && npm run typecheck -w @gm/web"
+  }
+}

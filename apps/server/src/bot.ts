@@ -41,11 +41,10 @@ function registerHandlers(b: Bot) {
       await ctx.answerPreCheckoutQuery(false, 'Invalid order');
       return;
     }
-    const pending = db
+    const [pending] = await db
       .select()
       .from(purchases)
-      .where(eq(purchases.payload, ctx.preCheckoutQuery.invoice_payload))
-      .get();
+      .where(eq(purchases.payload, ctx.preCheckoutQuery.invoice_payload));
     if (!pending || pending.status !== 'pending') {
       await ctx.answerPreCheckoutQuery(false, 'Order not found');
       return;
@@ -58,24 +57,22 @@ function registerHandlers(b: Bot) {
     const parsed = parseBuyPayload(payment.invoice_payload);
     if (!parsed) return;
 
-    const existing = db
+    const [existing] = await db
       .select()
       .from(purchases)
-      .where(eq(purchases.payload, payment.invoice_payload))
-      .get();
+      .where(eq(purchases.payload, payment.invoice_payload));
     if (!existing || existing.status === 'paid') return;
 
-    db.update(purchases)
+    await db.update(purchases)
       .set({ status: 'paid', chargeId: payment.telegram_payment_charge_id, amountStars: payment.total_amount })
-      .where(eq(purchases.id, existing.id))
-      .run();
+      .where(eq(purchases.id, existing.id));
 
-    const product = db.select().from(products).where(eq(products.id, existing.productId)).get();
+    const [product] = await db.select().from(products).where(eq(products.id, existing.productId));
     if (product) {
-      db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id)).run();
+      await db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id));
     }
 
-    const user = db.select().from(users).where(eq(users.id, existing.userId)).get();
+    const [user] = await db.select().from(users).where(eq(users.id, existing.userId));
     const greet = user ? `@${user.username ?? user.firstName}` : 'there';
 
     await ctx.reply(

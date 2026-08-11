@@ -14,13 +14,12 @@ export interface AuthedUser {
 const ANON_ID = 1;
 
 async function findOrCreateUser(telegramId: number, firstName: string, username?: string | null, language?: string | null) {
-  const existing = await db.select().from(users).where(eq(users.telegramId, telegramId)).get();
+  const [existing] = await db.select().from(users).where(eq(users.telegramId, telegramId));
   if (existing) return existing;
-  const created = await db
+  const [created] = await db
     .insert(users)
     .values({ telegramId, firstName, username: username ?? null, language: language ?? null, createdAt: Date.now() })
-    .returning()
-    .get();
+    .returning();
   return created;
 }
 

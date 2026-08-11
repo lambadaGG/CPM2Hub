@@ -28,8 +28,8 @@ function toDto(row: typeof products.$inferSelect) {
 productsRoute.get('/products', async (c) => {
   const category = c.req.query('category');
   const rows = category
-    ? db.select().from(products).where(and(eq(products.active, true), eq(products.category, category as Category))).all()
-    : db.select().from(products).where(eq(products.active, true)).all();
+    ? await db.select().from(products).where(and(eq(products.active, true), eq(products.category, category as Category)))
+    : await db.select().from(products).where(eq(products.active, true));
 
   rows.sort((a, b) => a.sortOrder - b.sortOrder);
   return c.json(rows.map(toDto));

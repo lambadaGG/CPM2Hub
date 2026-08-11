@@ -48,10 +48,12 @@ const seed: Array<typeof products.$inferInsert> = [
 
 let inserted = 0;
 for (const row of seed) {
-  const existing = db.select().from(products).where(eq(products.slug, row.slug!)).get();
-  if (existing) continue;
-  db.insert(products).values(row).run();
+  const existing = await db.select().from(products).where(eq(products.slug, row.slug!));
+  if (existing.length > 0) continue;
+  await db.insert(products).values(row);
   inserted++;
 }
 
-console.log(`Seed done. inserted=${inserted} total=${db.select().from(products).all().length}`);
+const all = await db.select().from(products);
+console.log(`Seed done. inserted=${inserted} total=${all.length}`);
+process.exit(0);

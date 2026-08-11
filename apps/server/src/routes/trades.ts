@@ -8,7 +8,7 @@ export const tradesRoute = new Hono();
 
 tradesRoute.get('/trades', async (c) => {
   const u = getUser(c);
-  const rows = db.select().from(trades).where(eq(trades.creatorId, u.id)).orderBy(desc(trades.createdAt)).all();
+  const rows = await db.select().from(trades).where(eq(trades.creatorId, u.id)).orderBy(desc(trades.createdAt));
   return c.json(
     rows.map((t) => ({
       id: t.id,
@@ -28,7 +28,7 @@ tradesRoute.post('/trades', async (c) => {
   if (!body || !body.offer || !body.receive) return c.json({ error: 'invalid_body' }, 400);
 
   const kind = ['money', 'car', 'vinyl'].includes(body.kind) ? body.kind : 'money';
-  const created = db
+  const [created] = await db
     .insert(trades)
     .values({
       creatorId: u.id,
@@ -39,8 +39,7 @@ tradesRoute.post('/trades', async (c) => {
       status: 'waiting',
       createdAt: Date.now(),
     })
-    .returning()
-    .get();
+    .returning();
 
   return c.json({ id: created.id, status: created.status }, 201);
 });

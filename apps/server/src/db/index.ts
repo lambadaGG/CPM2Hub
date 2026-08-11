@@ -1,17 +1,14 @@
 import 'dotenv/config';
-import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
 
-const dbPath = process.env.DATABASE_PATH ?? './data/gearmarket.db';
-const absPath = path.resolve(process.cwd(), dbPath);
-mkdirSync(path.dirname(absPath), { recursive: true });
+const connectionString = process.env.DATABASE_URL ?? '';
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not set');
+}
 
-const sqlite = new Database(absPath);
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
+const client = postgres(connectionString, { prepare: false });
 
-export const db = drizzle(sqlite, { schema });
+export const db = drizzle(client, { schema });
 export { schema };

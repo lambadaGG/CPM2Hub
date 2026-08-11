@@ -1,38 +1,38 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
-export const users = sqliteTable(
+export const users = pgTable(
   'users',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    telegramId: integer('telegram_id').notNull(),
+    id: serial('id').primaryKey(),
+    telegramId: bigint('telegram_id', { mode: 'number' }).notNull(),
     username: text('username'),
     firstName: text('first_name').notNull(),
     language: text('language'),
     creditsStars: integer('credits_stars').notNull().default(0),
-    createdAt: integer('created_at').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   },
   (t) => [uniqueIndex('users_telegram_id_idx').on(t.telegramId)],
 );
 
-export const products = sqliteTable('products', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
   slug: text('slug').notNull().unique(),
   category: text('category', { enum: ['gearbox', 'vinyl', 'tune', 'nick'] }).notNull(),
   title: text('title').notNull(),
   subtitle: text('subtitle').notNull(),
   priceStars: integer('price_stars').notNull(),
   downloads: integer('downloads').notNull().default(0),
-  verified: integer('verified', { mode: 'boolean' }).notNull().default(true),
+  verified: boolean('verified').notNull().default(true),
   glyph: text('glyph').notNull(),
   configCode: text('config_code').notNull(),
-  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
 });
 
-export const purchases = sqliteTable(
+export const purchases = pgTable(
   'purchases',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+    id: serial('id').primaryKey(),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id),
@@ -43,7 +43,7 @@ export const purchases = sqliteTable(
     payload: text('payload').notNull(),
     amountStars: integer('amount_stars').notNull().default(0),
     status: text('status', { enum: ['pending', 'paid'] }).notNull().default('pending'),
-    createdAt: integer('created_at').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   },
   (t) => [
     index('purchases_user_idx').on(t.userId),
@@ -52,8 +52,8 @@ export const purchases = sqliteTable(
   ],
 );
 
-export const trades = sqliteTable('trades', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const trades = pgTable('trades', {
+  id: serial('id').primaryKey(),
   creatorId: integer('creator_id')
     .notNull()
     .references(() => users.id),
@@ -62,5 +62,5 @@ export const trades = sqliteTable('trades', {
   receive: text('receive').notNull(),
   peer: text('peer').notNull(),
   status: text('status', { enum: ['waiting', 'escrow', 'completed'] }).notNull().default('waiting'),
-  createdAt: integer('created_at').notNull(),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 });

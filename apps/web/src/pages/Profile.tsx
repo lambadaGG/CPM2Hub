@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { getDownloads, getMe, getTrades } from '../api';
+import { openTelegramLink } from '@telegram-apps/sdk';
+import { getDownloads, getMe, getTrades, topupStars } from '../api';
 import type { Purchase, Trade, User } from '../api';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
+import { useI18n, type Lang } from '../i18n';
 import { fmtCompact, fmtDateTime } from '../utils';
 
 const TRADE_KIND: Record<Trade['kind'], string> = {
-  money: 'Car for Money',
-  car: 'Car for Car',
-  vinyl: 'Vinyl Preset',
+  money: 'escrow.kind.money',
+  car: 'escrow.kind.car',
+  vinyl: 'escrow.kind.vinyl',
 };
 
 const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
@@ -19,40 +21,85 @@ const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   completed: { label: 'DONE', cls: 'ok' },
 };
 
+const TOPUP_AMOUNTS = [50, 100, 200, 500];
+
 function SubCard() {
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('monthly');
   const toast = useToast();
+  const { t } = useI18n();
   return (
     <div className="card sub-card">
       <div className="sub-header">
-        <span className="sub-badge">FREE</span>
-        <span className="sub-active">Current plan</span>
+        <span className="sub-badge">{t('profile.plan.free')}</span>
+        <span className="sub-active">{t('profile.plan.current')}</span>
       </div>
       <div className="sub-toggle">
-        <button className={`sub-toggle-btn${cycle === 'monthly' ? ' active' : ''}`} onClick={() => setCycle('monthly')}>Monthly</button>
-        <button className={`sub-toggle-btn${cycle === 'annual' ? ' active' : ''}`} onClick={() => setCycle('annual')}>Annual</button>
+        <button className={`sub-toggle-btn${cycle === 'monthly' ? ' active' : ''}`} onClick={() => setCycle('monthly')}>{t('profile.plan.monthly')}</button>
+        <button className={`sub-toggle-btn${cycle === 'annual' ? ' active' : ''}`} onClick={() => setCycle('annual')}>{t('profile.plan.annual')}</button>
       </div>
       <ul className="sub-benefits">
-        <li>+ Unlimited downloads</li>
-        <li>+ Exclusive gearbox presets</li>
-        <li>+ Priority bot support</li>
+        <li>{t('profile.plan.b1')}</li>
+        <li>{t('profile.plan.b2')}</li>
+        <li>{t('profile.plan.b3')}</li>
       </ul>
-      <button className="primary-btn wide" onClick={() => toast('Upgrade coming soon')}>Upgrade to PRO</button>
+      <button className="primary-btn wide" onClick={() => toast(t('profile.plan.soon'))}>{t('profile.plan.upgrade')}</button>
+    </div>
+  );
+}
+
+function TopUpCard() {
+  const [amount, setAmount] = useState(100);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const { t } = useI18n();
+
+  const buy = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await topupStars(amount);
+      if (res.link) {
+        openTelegramLink(res.link);
+        toast(t('profile.topup.invoice'));
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('profile.topup.invoice'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      <h2 className="card-title">{t('profile.topup.title')}</h2>
+      <p className="topup-sub">{t('profile.topup.sub')}</p>
+      <div className="topup-amounts">
+        {TOPUP_AMOUNTS.map((a) => (
+          <button key={a} className={`topup-amt${a === amount ? ' active' : ''}`} onClick={() => setAmount(a)}>
+            <Icon id="i-star" className="icon" />{a}
+          </button>
+        ))}
+      </div>
+      <button className="primary-btn wide" onClick={buy} disabled={busy}>
+        <Icon id="i-star" className="icon" />
+        {busy ? '…' : `${t('profile.topup.buy')} ${amount}`}
+      </button>
     </div>
   );
 }
 
 function HistoryLog({ downloads, trades }: { downloads: Purchase[]; trades: Trade[] }) {
+  const { t } = useI18n();
   const items = [
     ...downloads.map((p) => ({ id: `dl-${p.id}`, date: p.createdAt, title: p.product?.title ?? 'Item', status: p.status })),
-    ...trades.map((t) => ({ id: `tr-${t.id}`, date: t.createdAt, title: `${TRADE_KIND[t.kind]} · @${t.peer}`, status: t.status })),
+    ...trades.map((tr) => ({ id: `tr-${tr.id}`, date: tr.createdAt, title: `${t(TRADE_KIND[tr.kind] as never)} · @${tr.peer}`, status: tr.status })),
   ].sort((a, b) => b.date - a.date);
 
   return (
     <div className="card">
-      <h2 className="card-title">History Log</h2>
+      <h2 className="card-title">{t('profile.history')}</h2>
       {items.length === 0 ? (
-        <div className="state-empty sm"><Icon id="i-hourglass" className="icon" /><p>No operations yet</p></div>
+        <div className="state-empty sm"><Icon id="i-hourglass" className="icon" /><p>{t('profile.history.none')}</p></div>
       ) : (
         <div className="history-list">
           {items.map((i) => {
@@ -71,11 +118,14 @@ function HistoryLog({ downloads, trades }: { downloads: Purchase[]; trades: Trad
   );
 }
 
+const LANG_LABEL: Record<Lang, string> = { ru: 'Русский', en: 'English' };
+
 export function Profile({ user: initial }: { user: User | null }) {
   const [me, setMe] = useState<User | null>(initial);
   const [downloads, setDownloads] = useState<Purchase[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const toast = useToast();
+  const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
     getMe().then((r) => setMe(r.user)).catch(() => {});
@@ -89,8 +139,8 @@ export function Profile({ user: initial }: { user: User | null }) {
     <div className="screen profile">
       <header className="top">
         <div>
-          <h1 className="page-title">PROFILE</h1>
-          <div className="logo-sub">ACCOUNT · SETTINGS</div>
+          <h1 className="page-title">{t('profile.title')}</h1>
+          <div className="logo-sub">{t('profile.subtitle')}</div>
         </div>
       </header>
 
@@ -103,16 +153,17 @@ export function Profile({ user: initial }: { user: User | null }) {
       </div>
 
       <div className="stats-row">
-        <div className="stat"><span className="st-label">STARS</span><span className="st-val">{fmtCompact(u?.creditsStars ?? 0)}</span></div>
-        <div className="stat"><span className="st-label">DOWNLOADED</span><span className="st-val">{downloads.length.toString().padStart(2, '0')}</span></div>
+        <div className="stat"><span className="st-label">{t('profile.stars')}</span><span className="st-val">{fmtCompact(u?.creditsStars ?? 0)}</span></div>
+        <div className="stat"><span className="st-label">{t('profile.downloaded')}</span><span className="st-val">{downloads.length.toString().padStart(2, '0')}</span></div>
       </div>
 
       <SubCard />
+      <TopUpCard />
 
       <div className="card">
-        <h2 className="card-title">My Downloads</h2>
+        <h2 className="card-title">{t('profile.downloads')}</h2>
         {downloads.length === 0 ? (
-          <div className="state-empty sm"><Icon id="i-dl" className="icon" /><p>Nothing downloaded yet</p></div>
+          <div className="state-empty sm"><Icon id="i-dl" className="icon" /><p>{t('profile.downloads.none')}</p></div>
         ) : (
           downloads.map((p) => (
             <div key={p.id} className="row">
@@ -129,28 +180,32 @@ export function Profile({ user: initial }: { user: User | null }) {
       <HistoryLog downloads={downloads} trades={trades} />
 
       <div className="card">
-        <h2 className="card-title">Settings & Support</h2>
+        <h2 className="card-title">{t('profile.settings')}</h2>
         <div className="settings-grid">
-          <button className="set-grid-item" onClick={() => toast('Bot support')}>
+          <button className="set-grid-item" onClick={() => openTelegramLink('https://t.me/CPM2Hub_Support')}>
             <Icon id="i-headset" className="icon" />
-            <span>Bot support</span>
+            <span>{t('profile.botSupport')}</span>
           </button>
-          <button className="set-grid-item" onClick={() => toast('Language')}>
+          <button className="set-grid-item" onClick={() => {
+            const next: Lang = lang === 'ru' ? 'en' : 'ru';
+            setLang(next);
+            toast(LANG_LABEL[next]);
+          }}>
             <Icon id="i-globe" className="icon" />
-            <span>Language</span>
+            <span>{t('profile.language')}: {LANG_LABEL[lang]}</span>
           </button>
-          <button className="set-grid-item" onClick={() => toast('Logout')}>
+          <button className="set-grid-item" onClick={() => toast(t('profile.logout'))}>
             <Icon id="i-power" className="icon" />
-            <span>Logout</span>
+            <span>{t('profile.logout')}</span>
           </button>
-          <button className="set-grid-item" onClick={() => toast('Change ID')}>
+          <button className="set-grid-item" onClick={() => toast(t('profile.changeId'))}>
             <Icon id="i-key" className="icon" />
-            <span>Change ID</span>
+            <span>{t('profile.changeId')}</span>
           </button>
         </div>
       </div>
 
-      <p className="version">CPM2 HUB v0.1.0</p>
+      <p className="version">{t('profile.version')}</p>
     </div>
   );
 }

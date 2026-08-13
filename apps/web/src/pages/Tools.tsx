@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
+import { useI18n } from '../i18n';
 import { copyText } from '../utils';
 import { gearSpeed } from '../tools/gearbox';
 import { hslToHex, hslToRgb, PALETTES, pickFromPosition, rgbToHsl, wheelPoint } from '../tools/color';
-import { NICK_STYLES, randomNick, renderNick } from '../tools/nick';
+import { NICK_BASES, NICK_STYLES, renderNick } from '../tools/nick';
+
+const GEAR_RATIOS = [3.1, 2.0, 1.5, 1.15, 0.95, 0.8, 0.7];
 
 function GearboxCalc() {
   const [hp, setHp] = useState(400);
@@ -12,49 +15,52 @@ function GearboxCalc() {
   const [fd, setFd] = useState(3.2);
   const [ratio, setRatio] = useState(1.0);
   const toast = useToast();
+  const { t } = useI18n();
 
   const chart = useMemo(() => {
     const maxRpm = 8000;
-    const points: Array<[number, number]> = [];
-    for (let rpm = 0; rpm <= maxRpm; rpm += 100) {
-      const speed = gearSpeed(rpm, fd * ratio, 1);
-      points.push([rpm, speed]);
-    }
-    return { points, maxSpeed: Math.max(...points.map((p) => p[1])) };
+    const allSpeeds: number[] = [];
+    const curves = GEAR_RATIOS.map((g) => {
+      const points: Array<[number, number]> = [];
+      for (let rpm = 0; rpm <= maxRpm; rpm += 200) {
+        const speed = gearSpeed(rpm, fd * (ratio * g), 1);
+        points.push([rpm, speed]);
+        allSpeeds.push(speed);
+      }
+      return points;
+    });
+    const maxSpeed = Math.max(...allSpeeds);
+    const y = (speed: number) => 100 - (speed / maxSpeed) * 90;
+    const x = (i: number) => (i / (curves[0].length - 1)) * 200;
+    const paths = curves.map((points) =>
+      points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p[1]).toFixed(1)}`).join(' '),
+    );
+    return { paths, maxSpeed };
   }, [fd, ratio]);
 
-  const svgPath = useMemo(() => {
-    if (chart.points.length === 0) return '';
-    let d = `M ${0} ${100 - (chart.points[0][1] / chart.maxSpeed) * 90}`;
-    for (let i = 1; i < chart.points.length; i++) {
-      const x = (i / (chart.points.length - 1)) * 200;
-      const y = 100 - (chart.points[i][1] / chart.maxSpeed) * 90;
-      d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
-    }
-    return d;
-  }, [chart]);
-
   return (
-    <ToolCard icon="i-gear" title="Gearbox Calculator" sub="Tune your transmission">
+    <ToolCard icon="i-gear" title={t('tools.gearbox')} sub={t('tools.gearbox.sub')}>
       <div className="gbox-inputs">
-        <label className="field-sm"><span>HP</span><input className="text-input-sm" type="number" value={hp} onChange={(e) => setHp(+e.target.value)} /></label>
-        <label className="field-sm"><span>Nm</span><input className="text-input-sm" type="number" value={nm} onChange={(e) => setNm(+e.target.value)} /></label>
+        <label className="field-sm"><span>{t('tools.hp')}</span><input className="text-input-sm" type="number" value={hp} onChange={(e) => setHp(+e.target.value)} /></label>
+        <label className="field-sm"><span>{t('tools.nm')}</span><input className="text-input-sm" type="number" value={nm} onChange={(e) => setNm(+e.target.value)} /></label>
       </div>
-      <label className="slider"><span className="sl-lbl"><em>Final Drive</em><strong>{fd.toFixed(2)}</strong></span>
+      <label className="slider"><span className="sl-lbl"><em>{t('tools.finalDrive')}</em><strong>{fd.toFixed(2)}</strong></span>
         <input type="range" min={2} max={5} step={0.1} value={fd} onChange={(e) => setFd(+e.target.value)} /></label>
-      <label className="slider"><span className="sl-lbl"><em>1st-7th Ratio</em><strong>{ratio.toFixed(2)}</strong></span>
+      <label className="slider"><span className="sl-lbl"><em>{t('tools.ratio')}</em><strong>{ratio.toFixed(2)}</strong></span>
         <input type="range" min={0.6} max={1.2} step={0.01} value={ratio} onChange={(e) => setRatio(+e.target.value)} /></label>
       <svg className="gearbox-chart-full" viewBox="0 0 200 100">
         {[20, 40, 60, 80].map((y) => <line key={y} x1="0" y1={y} x2="200" y2={y} stroke="#fff" strokeOpacity="0.1" />)}
-        <path d={svgPath} fill="none" stroke="#2AABEE" strokeWidth="2" strokeLinecap="round" />
+        {chart.paths.map((d, i) => (
+          <path key={i} d={d} fill="none" stroke={i === chart.paths.length - 1 ? '#5AC8FA' : '#2AABEE'} strokeWidth={i === chart.paths.length - 1 ? 2.2 : 1.2} strokeLinecap="round" strokeOpacity={i === chart.paths.length - 1 ? 1 : 0.55} />
+        ))}
         <line x1="0" y1="100" x2="200" y2="100" stroke="#fff" strokeOpacity="0.3" />
-        <text x="195" y="97" fontSize="7" fill="#8E8E93">RPM</text>
+        <text x="195" y="97" fontSize="7" fill="#8E8E93">{t('tools.rpm')}</text>
         <text x="5" y="12" fontSize="7" fill="#8E8E93">{Math.round(chart.maxSpeed)} km/h</text>
       </svg>
       <button className="primary-btn wide" onClick={async () => {
         await copyText(`FINAL=${fd.toFixed(2)};RATIO=${ratio.toFixed(2)};HP=${hp};NM=${nm}`);
-        toast('Config copied');
-      }}>Copy Config Code</button>
+        toast(t('tools.configCopied'));
+      }}>{t('tools.copyConfig')}</button>
     </ToolCard>
   );
 }
@@ -62,6 +68,7 @@ function GearboxCalc() {
 function ColorPicker() {
   const [hsv, setHsv] = useState({ h: 0, s: 100, t: 100 });
   const toast = useToast();
+  const { t } = useI18n();
   const hex = hslToHex(hsv.h, hsv.s, hsv.t);
   const [r, g, b] = hslToRgb(hsv.h, hsv.s, hsv.t);
 
@@ -72,7 +79,7 @@ function ColorPicker() {
   };
 
   return (
-    <ToolCard icon="i-palette" title="RGB & Color Picker" sub="Pick custom colors">
+    <ToolCard icon="i-palette" title={t('tools.color')} sub={t('tools.color.sub')}>
       <div className="cp-wrap">
         <div className="wheel" style={{ background: `conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)` }} onPointerDown={onWheel}>
           <div className="wheel-shade" />
@@ -88,7 +95,7 @@ function ColorPicker() {
           <input type="range" min={0} max={100} value={hsv.t} onChange={(e) => setHsv({ ...hsv, t: +e.target.value })} /></label>
       </div>
       <div className="cp-values">
-        <span>HEX</span>
+        <span>{t('tools.hex')}</span>
         <span>{hex}</span>
         <span>RGB({r}, {g}, {b})</span>
       </div>
@@ -99,8 +106,8 @@ function ColorPicker() {
       </div>
       <button className="primary-btn wide" onClick={async () => {
         await copyText(hex);
-        toast('Color copied');
-      }}>Copy</button>
+        toast(t('tools.colorCopied'));
+      }}>{t('tools.copy')}</button>
     </ToolCard>
   );
 }
@@ -108,19 +115,27 @@ function ColorPicker() {
 function NickGen() {
   const [base, setBase] = useState('FURYX');
   const [styleIdx, setStyleIdx] = useState(0);
+  const toast = useToast();
+  const { t } = useI18n();
 
   return (
-    <ToolCard icon="i-type" title="Font & Nick Generator" sub="Create unique names">
+    <ToolCard icon="i-type" title={t('tools.nick')} sub={t('tools.nick.sub')}>
       <div className="nick-input-row">
-        <input className="text-input" placeholder="Input a nick name" value={base} maxLength={12} onChange={(e) => setBase(e.target.value.toUpperCase())} />
-        <button className="shuffle-btn" onClick={() => setBase(randomNick().replace(/[^A-Z0-9_]/g, '').slice(0, 12))}><Icon id="i-shuffle" className="icon" /></button>
+        <input className="text-input" placeholder={t('tools.nick.placeholder')} value={base} maxLength={12} onChange={(e) => setBase(e.target.value.toUpperCase())} />
+        <button className="shuffle-btn" onClick={() => setBase(NICK_BASES[Math.floor(Math.random() * NICK_BASES.length)])}><Icon id="i-shuffle" className="icon" /></button>
       </div>
       <div className="nick-chips-grid">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <button key={i} className={`nick-chip${i === styleIdx ? ' active' : ''}`} onClick={() => setStyleIdx(i)}>
-            {renderNick(NICK_STYLES[i].base, base)}
+        {NICK_STYLES.map((s, i) => (
+          <button key={s.name} className={`nick-chip${i === styleIdx ? ' active' : ''}`} onClick={() => setStyleIdx(i)}>
+            {renderNick(s, base)}
           </button>
         ))}
+      </div>
+      <div className="nick-actions">
+        <button className="primary-btn wide" onClick={async () => {
+          await copyText(renderNick(NICK_STYLES[styleIdx], base));
+          toast(t('tools.nick.copied'));
+        }}>{t('tools.nick.copy')}</button>
       </div>
     </ToolCard>
   );
@@ -142,12 +157,13 @@ function ToolCard({ icon, title, sub, children }: { icon: string; title: string;
 }
 
 export function Tools() {
+  const { t } = useI18n();
   return (
     <div className="screen tools">
       <header className="top">
         <div>
-          <h1 className="page-title">GARAGE TOOLS</h1>
-          <div className="logo-sub">TUNE · PAINT · STAND OUT</div>
+          <h1 className="page-title">{t('tools.title')}</h1>
+          <div className="logo-sub">{t('tools.subtitle')}</div>
         </div>
       </header>
       <div className="tool-list">

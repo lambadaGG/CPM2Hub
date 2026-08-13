@@ -1,0 +1,237 @@
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { initDataUser } from '@telegram-apps/sdk';
+
+export type Lang = 'ru' | 'en';
+
+export const translations = {
+  en: {
+    'tab.market': 'Market',
+    'tab.tools': 'Tools',
+    'tab.escrow': 'Escrow',
+    'tab.profile': 'Profile',
+
+    'market.catalog': 'CATALOG',
+    'market.items': 'ITEMS',
+    'market.all': 'All Items',
+    'market.gearbox': 'Gearbox (КПП)',
+    'market.vinyl': 'Vinyl Presets',
+    'market.escrow.title': 'Automated P2P Escrow',
+    'market.escrow.sub': 'Guaranteed trades · Гарант',
+    'market.escrow.buy': 'Secure Swap',
+    'market.escrow.open': 'Open',
+    'market.retry': 'Retry',
+    'market.invoice': 'Invoice opened',
+    'market.buy': 'Buy Now',
+    'market.safe': 'SAFE',
+    'market.escrowTag': 'ESCROW',
+
+    'tools.title': 'GARAGE TOOLS',
+    'tools.subtitle': 'TUNE · PAINT · STAND OUT',
+    'tools.gearbox': 'Gearbox Calculator',
+    'tools.gearbox.sub': 'Tune your transmission',
+    'tools.hp': 'HP',
+    'tools.nm': 'Nm',
+    'tools.finalDrive': 'Final Drive',
+    'tools.ratio': '1st-7th Ratio',
+    'tools.rpm': 'RPM',
+    'tools.copyConfig': 'Copy Config Code',
+    'tools.configCopied': 'Config copied',
+    'tools.color': 'RGB & Color Picker',
+    'tools.color.sub': 'Pick custom colors',
+    'tools.hex': 'HEX',
+    'tools.copy': 'Copy',
+    'tools.colorCopied': 'Color copied',
+    'tools.nick': 'Font & Nick Generator',
+    'tools.nick.sub': 'Create unique names',
+    'tools.nick.placeholder': 'Input a nick name',
+    'tools.nick.random': 'Random nick',
+    'tools.nick.style': 'STYLES',
+    'tools.nick.copy': 'Copy',
+    'tools.nick.copied': 'Nick copied',
+
+    'escrow.title': 'ESCROW',
+    'escrow.subtitle': 'CPM2 WALLET',
+    'escrow.trading': 'Trading available',
+    'escrow.secure': 'Secure payments',
+    'escrow.vetted': 'Community vetted',
+    'escrow.active': 'ACTIVE TRADES',
+    'escrow.none': 'No trades yet',
+    'escrow.kind.car': 'Car for Car',
+    'escrow.kind.money': 'Car for Money',
+    'escrow.kind.vinyl': 'Vinyl Preset',
+    'escrow.status.waiting': 'Waiting for Buyer',
+    'escrow.status.escrow': 'In Escrow',
+    'escrow.status.completed': 'Completed',
+    'escrow.initiate': 'Initiate Safe Trade',
+    'escrow.creating': 'Creating…',
+    'escrow.fill': 'Fill offer and receive',
+    'escrow.created': 'Trade created',
+    'escrow.failed': 'Failed to create trade',
+
+    'profile.title': 'PROFILE',
+    'profile.subtitle': 'ACCOUNT · SETTINGS',
+    'profile.stars': 'STARS',
+    'profile.downloaded': 'DOWNLOADED',
+    'profile.plan.free': 'FREE',
+    'profile.plan.current': 'Current plan',
+    'profile.plan.monthly': 'Monthly',
+    'profile.plan.annual': 'Annual',
+    'profile.plan.b1': '+ Unlimited downloads',
+    'profile.plan.b2': '+ Exclusive gearbox presets',
+    'profile.plan.b3': '+ Priority bot support',
+    'profile.plan.upgrade': 'Upgrade to PRO · 199 Stars',
+    'profile.plan.soon': 'Upgrade coming soon',
+    'profile.downloads': 'My Downloads',
+    'profile.downloads.none': 'Nothing downloaded yet',
+    'profile.history': 'History Log',
+    'profile.history.none': 'No operations yet',
+    'profile.settings': 'Settings & Support',
+    'profile.botSupport': 'Bot support',
+    'profile.language': 'Language',
+    'profile.logout': 'Logout',
+    'profile.changeId': 'Change ID',
+    'profile.topup.title': 'Top Up Stars',
+    'profile.topup.sub': 'Add Stars to your balance',
+    'profile.topup.buy': 'Buy',
+    'profile.topup.invoice': 'Invoice opened',
+    'profile.version': 'CPM2 HUB v0.1.0',
+  },
+  ru: {
+    'tab.market': 'Маркет',
+    'tab.tools': 'Инструменты',
+    'tab.escrow': 'Эскроу',
+    'tab.profile': 'Профиль',
+
+    'market.catalog': 'КАТАЛОГ',
+    'market.items': 'ТОВАРОВ',
+    'market.all': 'Все товары',
+    'market.gearbox': 'Коробки (КПП)',
+    'market.vinyl': 'Винил-пресеты',
+    'market.escrow.title': 'Авто P2P Эскроу',
+    'market.escrow.sub': 'Гарантированные сделки',
+    'market.escrow.buy': 'Безопасный обмен',
+    'market.escrow.open': 'Открыть',
+    'market.retry': 'Повторить',
+    'market.invoice': 'Счёт открыт',
+    'market.buy': 'Купить',
+    'market.safe': 'БЕЗОПАСНО',
+    'market.escrowTag': 'ЭСКРОУ',
+
+    'tools.title': 'ИНСТРУМЕНТЫ ГАРАЖА',
+    'tools.subtitle': 'ТЮНИНГ · ПОКРАСКА · СТИЛЬ',
+    'tools.gearbox': 'Калькулятор коробки',
+    'tools.gearbox.sub': 'Настрой свою передачу',
+    'tools.hp': 'Л.С.',
+    'tools.nm': 'Нм',
+    'tools.finalDrive': 'Главная пара',
+    'tools.ratio': 'Диапазон 1-7',
+    'tools.rpm': 'ОБ/МИН',
+    'tools.copyConfig': 'Копировать код',
+    'tools.configCopied': 'Код скопирован',
+    'tools.color': 'RGB и выбор цвета',
+    'tools.color.sub': 'Выбери свой цвет',
+    'tools.hex': 'HEX',
+    'tools.copy': 'Копировать',
+    'tools.colorCopied': 'Цвет скопирован',
+    'tools.nick': 'Генератор ника и шрифтов',
+    'tools.nick.sub': 'Создай уникальное имя',
+    'tools.nick.placeholder': 'Введите ник',
+    'tools.nick.random': 'Случайный ник',
+    'tools.nick.style': 'СТИЛИ',
+    'tools.nick.copy': 'Копировать',
+    'tools.nick.copied': 'Ник скопирован',
+
+    'escrow.title': 'ЭСКРОУ',
+    'escrow.subtitle': 'CPM2 КОШЕЛЁК',
+    'escrow.trading': 'Трейдинг доступен',
+    'escrow.secure': 'Безопасные платежи',
+    'escrow.vetted': 'Проверено сообществом',
+    'escrow.active': 'АКТИВНЫЕ СДЕЛКИ',
+    'escrow.none': 'Пока нет сделок',
+    'escrow.kind.car': 'Машина за машину',
+    'escrow.kind.money': 'Машина за деньги',
+    'escrow.kind.vinyl': 'Винил-пресет',
+    'escrow.status.waiting': 'Ждёт покупателя',
+    'escrow.status.escrow': 'В эскроу',
+    'escrow.status.completed': 'Завершена',
+    'escrow.initiate': 'Начать безопасную сделку',
+    'escrow.creating': 'Создание…',
+    'escrow.fill': 'Заполни что отдаёшь и что получаешь',
+    'escrow.created': 'Сделка создана',
+    'escrow.failed': 'Не удалось создать сделку',
+
+    'profile.title': 'ПРОФИЛЬ',
+    'profile.subtitle': 'АККАУНТ · НАСТРОЙКИ',
+    'profile.stars': 'ЗВЁЗДЫ',
+    'profile.downloaded': 'СКАЧАНО',
+    'profile.plan.free': 'FREE',
+    'profile.plan.current': 'Текущий план',
+    'profile.plan.monthly': 'Месяц',
+    'profile.plan.annual': 'Год',
+    'profile.plan.b1': '+ Безлимитные скачивания',
+    'profile.plan.b2': '+ Эксклюзивные пресеты КПП',
+    'profile.plan.b3': '+ Приоритетная поддержка',
+    'profile.plan.upgrade': 'Перейти на PRO · 199 звёзд',
+    'profile.plan.soon': 'Апгрейд скоро',
+    'profile.downloads': 'Мои скачивания',
+    'profile.downloads.none': 'Пока ничего не скачано',
+    'profile.history': 'История операций',
+    'profile.history.none': 'Пока нет операций',
+    'profile.settings': 'Настройки и поддержка',
+    'profile.botSupport': 'Поддержка бота',
+    'profile.language': 'Язык',
+    'profile.logout': 'Выйти',
+    'profile.changeId': 'Сменить ID',
+    'profile.topup.title': 'Пополнить звёзды',
+    'profile.topup.sub': 'Пополните баланс звёзд',
+    'profile.topup.buy': 'Купить',
+    'profile.topup.invoice': 'Счёт открыт',
+    'profile.version': 'CPM2 HUB v0.1.0',
+  },
+} as const;
+
+export type TKey = keyof (typeof translations)['en'];
+
+const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: TKey) => string }>({
+  lang: 'en',
+  setLang: () => {},
+  t: (k) => k,
+});
+
+function detectLang(): Lang {
+  try {
+    const saved = localStorage.getItem('gm-lang');
+    if (saved === 'ru' || saved === 'en') return saved;
+    const code = initDataUser()?.language_code ?? '';
+    return code.startsWith('ru') ? 'ru' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(detectLang);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gm-lang', lang);
+    } catch {
+      /* ignore */
+    }
+  }, [lang]);
+
+  const value = useMemo(
+    () => ({
+      lang,
+      setLang: (l: Lang) => setLangState(l),
+      t: (k: TKey) => translations[lang][k] ?? translations.en[k] ?? k,
+    }),
+    [lang],
+  );
+
+  return <LangCtx.Provider value={value}>{children}</LangCtx.Provider>;
+}
+
+export function useI18n() {
+  return useContext(LangCtx);
+}

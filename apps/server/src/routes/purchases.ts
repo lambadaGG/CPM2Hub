@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/index';
-import { products, purchases } from '../db/schema';
+import { products, purchases, topups } from '../db/schema';
 import { getUser } from './auth';
 import { productToDto } from './products';
-import { createInvoiceLink, makeBuyPayload } from '../lib/payments';
+import { createInvoiceLink, makeBuyPayload, makeTopupPayload } from '../lib/payments';
 
 export const purchasesRoute = new Hono();
 
@@ -47,6 +47,28 @@ purchasesRoute.post('/products/:id/buy', async (c) => {
 
   await db.insert(purchases)
     .values({ userId: u.id, productId: product.id, payload, amountStars: product.priceStars, status: 'pending', createdAt: Date.now() });
+
+  return c.json({ link });
+});
+
+purchasesRoute.post('/topup', async (c) => {
+  const u = getUser(c);
+  const body = await c.req.json().catch(() => null);
+  const amount = Number((body as { amount?: unknown } | null)?.amount);
+  if (!Number.isInteger(amount) || amount < 1 || amount > 10000) {
+    return c.json({ error: 'bad_amount' }, 400);
+  }
+
+  const payload = makeTopupPayload(u.id, amount);
+  const link = await createInvoiceLink({
+    title: 'CPM2 Hub · Stars Top Up',
+    description: 'Add Stars to your balance',
+    payload,
+    amountStars: amount,
+  });
+
+  await db.insert(topups)
+    .values({ userId: u.id, payload, amountStars: amount, status: 'pending', createdAt: Date.now() });
 
   return c.json({ link });
 });

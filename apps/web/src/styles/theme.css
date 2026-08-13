@@ -781,6 +781,25 @@ body {
   border-color: #dbdcde;
   background: #dbdcde;
 }
+.nick-actions { margin-top: 12px; }
+
+/* ---------- Top Up ---------- */
+.topup-sub { margin: 0 0 12px; font-size: 11px; color: var(--sub); }
+.topup-amounts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.topup-amt {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-size: 13px; font-weight: 700;
+  color: var(--sub);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.topup-amt .icon { width: 13px; height: 13px; fill: var(--warn); stroke: var(--warn); }
+.topup-amt.active { color: var(--text); border-color: var(--accent); background: rgba(42, 171, 238, 0.12); }
+.topup-amt:active { transform: scale(0.97); }
 
 /* ---------- Escrow (new design) ---------- */
 .trade-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }

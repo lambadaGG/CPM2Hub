@@ -13,3 +13,5 @@ export const createTrade = (body: { kind: string; offer: string; receive: string
   api<{ id: number; status: string }>('/trades', { method: 'POST', body: JSON.stringify(body) });
 export const buyProduct = (req: BuyRequest) =>
   api<BuyResponse>(`/products/${req.productId}/buy`, { method: 'POST' });
+export const topupStars = (amount: number) =>
+  api<BuyResponse>('/topup', { method: 'POST', body: JSON.stringify({ amount }) });

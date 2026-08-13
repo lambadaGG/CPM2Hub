@@ -65,3 +65,23 @@ export const trades = pgTable('trades', {
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   updatedAt: bigint('updated_at', { mode: 'number' }).notNull().default(0),
 });
+
+export const topups = pgTable(
+  'topups',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    chargeId: text('charge_id'),
+    payload: text('payload').notNull(),
+    amountStars: integer('amount_stars').notNull().default(0),
+    status: text('status', { enum: ['pending', 'paid'] }).notNull().default('pending'),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    index('topups_user_idx').on(t.userId),
+    uniqueIndex('topups_charge_idx').on(t.chargeId),
+    uniqueIndex('topups_payload_idx').on(t.payload),
+  ],
+);

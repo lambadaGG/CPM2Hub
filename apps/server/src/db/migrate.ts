@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import postgres from 'postgres';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,15 +11,20 @@ if (!url) {
   process.exit(1);
 }
 
-const sqlPath = resolve(__dirname, '../../drizzle/0000_init.sql');
-const ddl = readFileSync(sqlPath, 'utf8');
+const drizzleDir = resolve(__dirname, '../../drizzle');
+const migrations = readdirSync(drizzleDir)
+  .filter((f) => /^\d+_.*\.sql$/.test(f))
+  .sort();
 
 const client = postgres(url, { prepare: false, max: 1, ssl: 'require' });
 
 try {
-  console.log('[migrate] applying 0000_init.sql ...');
-  await client.unsafe(ddl);
-  console.log('[migrate] ✓ DDL applied');
+  for (const file of migrations) {
+    const ddl = readFileSync(resolve(drizzleDir, file), 'utf8');
+    console.log(`[migrate] applying ${file} ...`);
+    await client.unsafe(ddl);
+  }
+  console.log('[migrate] ✓ all migrations applied');
 
   const tables = await client`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;

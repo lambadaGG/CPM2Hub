@@ -5,6 +5,11 @@ export interface BuyPayload {
   userId: number;
 }
 
+export interface TopupPayload {
+  userId: number;
+  amountStars: number;
+}
+
 export function makeBuyPayload(productId: number, userId: number): string {
   return `buy:${productId}:${userId}:${randomBytes(4).toString('hex')}`;
 }
@@ -16,6 +21,19 @@ export function parseBuyPayload(payload: string): BuyPayload | null {
   const userId = Number(parts[2]);
   if (!Number.isInteger(productId) || !Number.isInteger(userId)) return null;
   return { productId, userId };
+}
+
+export function makeTopupPayload(userId: number, amountStars: number): string {
+  return `topup:${userId}:${amountStars}:${randomBytes(4).toString('hex')}`;
+}
+
+export function parseTopupPayload(payload: string): TopupPayload | null {
+  const parts = payload.split(':');
+  if (parts.length !== 4 || parts[0] !== 'topup') return null;
+  const userId = Number(parts[1]);
+  const amountStars = Number(parts[2]);
+  if (!Number.isInteger(userId) || !Number.isInteger(amountStars)) return null;
+  return { userId, amountStars };
 }
 
 export async function createInvoiceLink(args: {

@@ -12,7 +12,7 @@ function hmac(key: Buffer | string, data: string): Buffer {
 function buildInitData(params: Record<string, string>, hash?: string): string {
   const keys = Object.keys(params).sort();
   const dataCheckString = keys.map((k) => `${k}=${params[k]}`).join('\n');
-  const secret = hmac(BOT_TOKEN, 'WebAppData');
+  const secret = createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
   const computed = hmac(secret, dataCheckString).toString('hex');
   const p = new URLSearchParams(params);
   p.set('hash', hash ?? computed);

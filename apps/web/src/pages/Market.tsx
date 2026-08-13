@@ -5,6 +5,7 @@ import type { Category, Product, User } from '../api';
 import { Banner } from '../components/Banner';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
+import { useI18n } from '../i18n';
 import { fmtCompact } from '../utils';
 
 const GLYPHS: Record<string, string> = {
@@ -17,17 +18,12 @@ const GLYPHS: Record<string, string> = {
   shield: 'i-shieldcheck',
 };
 
-const CATS: Array<{ value: Category | 'all'; label: string }> = [
-  { value: 'all', label: 'All Items' },
-  { value: 'gearbox', label: 'Gearbox (КПП)' },
-  { value: 'vinyl', label: 'Vinyl Presets' },
-];
-
 const USD_RATE = 50; // 1 Star ≈ $0.02
 
 function Tile({ p }: { p: Product }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const { t } = useI18n();
 
   const click = async () => {
     if (busy) return;
@@ -36,10 +32,10 @@ function Tile({ p }: { p: Product }) {
       const res = await buyProduct({ productId: p.id });
       if (res.link) {
         openTelegramLink(res.link);
-        toast('Invoice opened');
+        toast(t('market.invoice'));
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Purchase failed');
+      toast(e instanceof Error ? e.message : t('market.invoice'));
     } finally {
       setBusy(false);
     }
@@ -61,13 +57,14 @@ function Tile({ p }: { p: Product }) {
       <p className="t-sub">{p.subtitle}</p>
       <button className="t-buy" onClick={click} disabled={busy}>
         <span>{p.priceStars} Stars (${usdPrice})</span>
-        <span>Buy Now</span>
+        <span>{t('market.buy')}</span>
       </button>
     </article>
   );
 }
 
 function EscrowTile({ onOpen }: { onOpen: () => void }) {
+  const { t } = useI18n();
   return (
     <article className="tile tile-escrow" onClick={onOpen}>
       <div className="tk">
@@ -75,14 +72,14 @@ function EscrowTile({ onOpen }: { onOpen: () => void }) {
         <span className="tk-verified"><Icon id="i-check" className="icon" /></span>
       </div>
       <div className="t-meta">
-        <span className="t-badge">SAFE</span>
-        <span className="t-purchases">ESCROW</span>
+        <span className="t-badge">{t('market.safe')}</span>
+        <span className="t-purchases">{t('market.escrowTag')}</span>
       </div>
-      <h3 className="t-title">Automated P2P Escrow</h3>
-      <p className="t-sub">Guaranteed trades · Гарант</p>
+      <h3 className="t-title">{t('market.escrow.title')}</h3>
+      <p className="t-sub">{t('market.escrow.sub')}</p>
       <button className="t-buy" onClick={onOpen}>
-        <span>Secure Swap</span>
-        <span>Open</span>
+        <span>{t('market.escrow.buy')}</span>
+        <span>{t('market.escrow.open')}</span>
       </button>
     </article>
   );
@@ -93,6 +90,13 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
+
+  const CATS: Array<{ value: Category | 'all'; label: string }> = [
+    { value: 'all', label: t('market.all') },
+    { value: 'gearbox', label: t('market.gearbox') },
+    { value: 'vinyl', label: t('market.vinyl') },
+  ];
 
   const load = async () => {
     setError(null);
@@ -101,7 +105,7 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
       if (me) setBalance(me.user.creditsStars);
       setProducts(prods);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Market offline');
+      setError(e instanceof Error ? e.message : t('market.all'));
     }
   };
 
@@ -142,7 +146,7 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
           <Icon id="i-power" className="icon" />
           <p>{error}</p>
           <button className="primary-btn" style={{ marginTop: 10 }} onClick={load}>
-            Retry
+            {t('market.retry')}
           </button>
         </div>
       ) : (
@@ -156,8 +160,8 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
 
       <div className="midbar">
         <div className="m-block">
-          <span className="m-label">CATALOG</span>
-          <span className="m-val">{(products.length || 0).toString().padStart(2, '0')} ITEMS</span>
+          <span className="m-label">{t('market.catalog')}</span>
+          <span className="m-val">{(products.length || 0).toString().padStart(2, '0')} {t('market.items')}</span>
         </div>
       </div>
     </div>

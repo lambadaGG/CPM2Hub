@@ -2,8 +2,8 @@ import 'dotenv/config';
 import { Bot } from 'grammy';
 import { eq } from 'drizzle-orm';
 import { db } from './db/index';
-import { products, purchases, users } from './db/schema';
-import { parseBuyPayload } from './lib/payments';
+import { products, purchases, topups, users } from './db/schema';
+import { parseBuyPayload, parseTopupPayload } from './lib/payments';
 
 let bot: Bot | null = null;
 
@@ -47,7 +47,27 @@ function registerHandlers(b: Bot) {
   });
 
   b.on('pre_checkout_query', async (ctx) => {
-    const parsed = parseBuyPayload(ctx.preCheckoutQuery.invoice_payload);
+    const payload = ctx.preCheckoutQuery.invoice_payload;
+
+    const topup = parseTopupPayload(payload);
+    if (topup) {
+      if (ctx.preCheckoutQuery.total_amount !== topup.amountStars) {
+        await ctx.answerPreCheckoutQuery(false, 'Amount mismatch');
+        return;
+      }
+      const [pending] = await db
+        .select()
+        .from(topups)
+        .where(eq(topups.payload, payload));
+      if (!pending || pending.status !== 'pending') {
+        await ctx.answerPreCheckoutQuery(false, 'Order not found');
+        return;
+      }
+      await ctx.answerPreCheckoutQuery(true);
+      return;
+    }
+
+    const parsed = parseBuyPayload(payload);
     if (!parsed) {
       await ctx.answerPreCheckoutQuery(false, 'Invalid order');
       return;
@@ -66,6 +86,33 @@ function registerHandlers(b: Bot) {
   b.on('message:successful_payment', async (ctx) => {
     const payment = ctx.message.successful_payment;
     const payload = payment.invoice_payload;
+
+    const topup = parseTopupPayload(payload);
+    if (topup) {
+      const [existing] = await db
+        .select()
+        .from(topups)
+        .where(eq(topups.payload, payload));
+      if (!existing || existing.status === 'paid') return;
+
+      const payer = ctx.from;
+      if (payer?.id !== existing.userId) return;
+      if (payment.total_amount !== existing.amountStars) return;
+
+      await db.update(topups)
+        .set({ status: 'paid', chargeId: payment.telegram_payment_charge_id })
+        .where(eq(topups.id, existing.id));
+
+      const [user] = await db.select().from(users).where(eq(users.id, existing.userId));
+      const current = user?.creditsStars ?? 0;
+      await db.update(users)
+        .set({ creditsStars: current + existing.amountStars })
+        .where(eq(users.id, existing.userId));
+
+      await ctx.reply(`⭐ +${existing.amountStars} Stars added to your balance.`);
+      return;
+    }
+
     const parsed = parseBuyPayload(payload);
     if (!parsed) return;
 

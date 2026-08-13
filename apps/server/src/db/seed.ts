@@ -1,7 +1,12 @@
 import 'dotenv/config';
 import { eq } from 'drizzle-orm';
-import { db } from './index';
+import { db, isDbConfigured } from './index';
 import { products } from './schema';
+
+if (!isDbConfigured()) {
+  console.error('DATABASE_URL is not set — run `docker compose up -d` first');
+  process.exit(1);
+}
 
 const seed: Array<typeof products.$inferInsert> = [
   {

@@ -22,6 +22,11 @@ app.use(
 
 app.use('/api/*', auth);
 
+app.onError((err, c) => {
+  console.error('[error]', err.message);
+  return c.json({ error: err.message }, err.message.includes('DATABASE_URL') ? 503 : 500);
+});
+
 app.route('/api', meRoute);
 app.route('/api', productsRoute);
 app.route('/api', purchasesRoute);
@@ -30,25 +35,31 @@ app.route('/api', tradesRoute);
 app.get('/health', (c) => c.json({ ok: true }));
 
 async function main() {
-  const bot = getBot();
-  await bot.init();
-  const webhookUrl = process.env.PUBLIC_URL;
+  const token = process.env.BOT_TOKEN;
+  const bot = token ? getBot() : null;
 
-  if (webhookUrl) {
-    await setupWebhook(bot);
-    app.post('/webhook', async (c) => {
-      const update = await c.req.json();
-      try {
-        await bot.handleUpdate(update);
-      } catch (err) {
-        console.error('[webhook] update failed', err);
-      }
-      return c.json({ ok: true });
-    });
-    console.log('[bot] webhook mode →', webhookUrl);
+  if (bot) {
+    await bot.init();
+    const webhookUrl = process.env.PUBLIC_URL;
+
+    if (webhookUrl) {
+      await setupWebhook(bot);
+      app.post('/webhook', async (c) => {
+        const update = await c.req.json();
+        try {
+          await bot.handleUpdate(update);
+        } catch (err) {
+          console.error('[webhook] update failed', err);
+        }
+        return c.json({ ok: true });
+      });
+      console.log('[bot] webhook mode →', webhookUrl);
+    } else {
+      bot.start({ drop_pending_updates: true });
+      console.log('[bot] polling mode');
+    }
   } else {
-    bot.start({ drop_pending_updates: true });
-    console.log('[bot] polling mode');
+    console.log('[bot] BOT_TOKEN not set — API-only mode');
   }
 
   const port = Number(process.env.PORT ?? 8080);

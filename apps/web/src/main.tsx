@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { init, initDataRaw, restoreInitData } from '@telegram-apps/sdk';
+import LoadingSplash from './components/LoadingSplash';
 import App from './App';
 import { setApiInitData } from './api/client';
 import './styles/theme.css';
@@ -24,6 +25,8 @@ const isTelegramApp = !!raw;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App isTelegramApp={isTelegramApp} />
+    <LoadingSplash>
+      <App isTelegramApp={isTelegramApp} />
+    </LoadingSplash>
   </StrictMode>
 );

@@ -73,16 +73,19 @@ export function Market({ user }: { user: User | null }) {
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const load = async () => {
+    setError(null);
+    try {
+      const [me, prods] = await Promise.all([getMe().catch(() => null), getProducts()]);
+      if (me) setBalance(me.user.creditsStars);
+      setProducts(prods);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Market offline');
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const [me, prods] = await Promise.all([getMe().catch(() => null), getProducts()]);
-        if (me) setBalance(me.user.creditsStars);
-        setProducts(prods);
-      } catch {
-        setError('Market offline');
-      }
-    })();
+    load();
   }, []);
 
   const filtered = cat === 'all' ? products : products.filter((p) => p.category === cat);
@@ -117,6 +120,9 @@ export function Market({ user }: { user: User | null }) {
         <div className="state-empty">
           <Icon id="i-power" className="icon" />
           <p>{error}</p>
+          <button className="primary-btn" style={{ marginTop: 10 }} onClick={load}>
+            Retry
+          </button>
         </div>
       ) : (
         <div className="tiles">

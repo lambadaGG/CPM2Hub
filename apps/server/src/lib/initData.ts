@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { validate } from '@telegram-apps/init-data-node';
 
 export interface InitDataUser {
   id: number;
@@ -15,34 +15,23 @@ export interface ValidInitData {
   raw: string;
 }
 
-const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function hmac(key: Buffer | string, data: string): Buffer {
-  return createHmac('sha256', key).update(data).digest();
-}
+const MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
 
 export function verifyInitData(raw: string, botToken: string): ValidInitData | null {
   if (!raw || !botToken) return null;
+
+  try {
+    validate(raw, botToken, { expiresIn: MAX_AGE_SECONDS });
+  } catch (e) {
+    console.warn('[initData] validation failed', {
+      error: e instanceof Error ? e.message : String(e),
+      rawLen: raw.length,
+    });
+    return null;
+  }
+
   const params = new URLSearchParams(raw);
-  const hash = params.get('hash');
-  if (!hash) return null;
-  params.delete('hash');
-
-  const pairs: Array<[string, string]> = [];
-  for (const [key, value] of params.entries()) pairs.push([key, value]);
-  pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-
-  const dataCheckString = pairs.map(([k, v]) => `${k}=${v}`).join('\n');
-  const secretKey = hmac(botToken, 'WebAppData');
-  const computed = hmac(secretKey, dataCheckString).toString('hex');
-
-  const a = Buffer.from(computed, 'hex');
-  const b = Buffer.from(hash, 'hex');
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-
   const authDate = Number(params.get('auth_date') ?? 0);
-  if (!authDate) return null;
-  if (Date.now() - authDate * 1000 > MAX_AGE_MS) return null;
 
   let user: InitDataUser | undefined;
   const rawUser = params.get('user');

@@ -14,11 +14,10 @@
     "@gm/shared": "*",
     "@hono/node-server": "^1.14.0",
     "dotenv": "^17.0.0",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "grammy": "^1.38.0",
     "hono": "^4.9.0",
-    "postgres": "^3.4.0",
-    "zod": "^3.25.0"
+    "postgres": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

@@ -13,5 +13,10 @@
     "start": "npm run start -w @gm/server",
     "db:push": "npm run db:push -w @gm/server",
     "typecheck": "npm run typecheck -w @gm/server && npm run typecheck -w @gm/web"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
   }
 }

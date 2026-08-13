@@ -6,9 +6,9 @@ import { Segmented } from '../components/Segmented';
 import { useToast } from '../components/Toast';
 
 const DEMO = [
-  { color: '#FFD60A', title: 'Waiting for Buyer', sub: '', pct: 45 },
+  { color: '#E6B800', title: 'Waiting for Buyer', sub: '', pct: 45 },
   { color: '#2AABEE', title: 'In Escrow', sub: '', pct: 72 },
-  { color: '#30D158', title: 'Completed', sub: '', pct: 100 },
+  { color: '#34C759', title: 'Completed', sub: '', pct: 100 },
 ];
 
 const KIND_LABELS: Record<Trade['kind'], string> = {
@@ -18,9 +18,9 @@ const KIND_LABELS: Record<Trade['kind'], string> = {
 };
 
 const STATUS_META: Record<Trade['status'], { label: string; color: string }> = {
-  waiting: { label: 'Waiting for Buyer', color: '#FFD60A' },
+  waiting: { label: 'Waiting for Buyer', color: '#E6B800' },
   escrow: { label: 'In Escrow', color: '#2AABEE' },
-  completed: { label: 'Completed', color: '#30D158' },
+  completed: { label: 'Completed', color: '#34C759' },
 };
 
 export function Escrow() {

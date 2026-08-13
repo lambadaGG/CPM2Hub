@@ -26,9 +26,21 @@ function getUser(): User | null {
   }
 }
 
-export default function App() {
+export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
   const [tab, setTab] = useState<TabId>('market');
   const [user] = useState<User | null>(getUser);
+
+  if (!isTelegramApp) {
+    return (
+      <div className="app" style={{ height: '100%', background: 'var(--bg)' }}>
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--sub)' }}>
+          <h2>CPM2 HUB</h2>
+          <p>This application is designed for Telegram Web App.</p>
+          <p>Please open this app inside the Telegram messenger.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ToastProvider>

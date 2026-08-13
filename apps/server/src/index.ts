@@ -31,6 +31,7 @@ app.get('/health', (c) => c.json({ ok: true }));
 
 async function main() {
   const bot = getBot();
+  await bot.init();
   const webhookUrl = process.env.PUBLIC_URL;
 
   if (webhookUrl) {
@@ -46,7 +47,6 @@ async function main() {
     });
     console.log('[bot] webhook mode →', webhookUrl);
   } else {
-    await bot.init();
     bot.start({ drop_pending_updates: true });
     console.log('[bot] polling mode');
   }

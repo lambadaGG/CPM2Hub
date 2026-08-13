@@ -5,6 +5,7 @@ import App from './App';
 import { setApiInitData } from './api/client';
 import './styles/theme.css';
 
+let raw: string | null = null;
 try {
   init();
 } catch {
@@ -12,13 +13,21 @@ try {
 }
 
 try {
-  setApiInitData(initDataRaw());
+  raw = initDataRaw();
+} catch {
+  raw = null;
+}
+
+try {
+  setApiInitData(raw);
 } catch {
   setApiInitData(null);
 }
 
+const isTelegramApp = !!raw;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <App isTelegramApp={isTelegramApp} />
   </StrictMode>
 );

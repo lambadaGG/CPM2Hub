@@ -67,7 +67,28 @@ function Tile({ p }: { p: Product }) {
   );
 }
 
-export function Market({ user }: { user: User | null }) {
+function EscrowTile({ onOpen }: { onOpen: () => void }) {
+  return (
+    <article className="tile tile-escrow" onClick={onOpen}>
+      <div className="tk">
+        <Icon id="i-shield" className="icon tk-icon" />
+        <span className="tk-verified"><Icon id="i-check" className="icon" /></span>
+      </div>
+      <div className="t-meta">
+        <span className="t-badge">SAFE</span>
+        <span className="t-purchases">ESCROW</span>
+      </div>
+      <h3 className="t-title">Automated P2P Escrow</h3>
+      <p className="t-sub">Guaranteed trades · Гарант</p>
+      <button className="t-buy" onClick={onOpen}>
+        <span>Secure Swap</span>
+        <span>Open</span>
+      </button>
+    </article>
+  );
+}
+
+export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow?: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
@@ -129,6 +150,7 @@ export function Market({ user }: { user: User | null }) {
           {filtered.map((p) => (
             <Tile key={p.id} p={p} />
           ))}
+          {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>
       )}
 

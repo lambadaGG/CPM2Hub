@@ -16,6 +16,7 @@
   --ok: #34c759;
   --warn: #ffd60a;
   --bad: #ff453a;
+  --info: #2aabee;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --radius: 18px;
@@ -265,6 +266,10 @@ body {
 .t-buy:active { transform: scale(0.97); }
 .t-buy:disabled { opacity: 0.55; }
 .t-buy > span:first-child { opacity: 0.9; }
+.tile-escrow { cursor: pointer; border: 1px solid rgba(42, 171, 238, 0.35); background: linear-gradient(180deg, rgba(42, 171, 238, 0.1), rgba(42, 171, 238, 0.02)); }
+.tile-escrow .tk { background: linear-gradient(135deg, rgba(42, 171, 238, 0.16), rgba(90, 200, 250, 0.08)); border-color: rgba(42, 171, 238, 0.35); }
+.tile-escrow .t-buy { background: linear-gradient(135deg, #2aabee, #5ac8fa); }
+.tile-escrow:active { transform: scale(0.98); }
 .t-price { display: flex; align-items: center; gap: 3px; }
 .t-price .icon { width: 12px; height: 12px; fill: var(--warn); stroke: var(--warn); }
 
@@ -843,6 +848,8 @@ body {
 .history-date { font-size: 11px; font-weight: 600; }
 .history-time { font-size: 10px; color: var(--sub); margin-right: auto; }
 .history-status { font-size: 10px; font-weight: 700; color: var(--ok); }
+.history-status.warn { color: var(--warn); }
+.history-status.info { color: var(--info); }
 
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .set-grid-item {

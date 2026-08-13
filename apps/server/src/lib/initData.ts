@@ -15,7 +15,7 @@ export interface ValidInitData {
   raw: string;
 }
 
-const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function hmac(key: Buffer | string, data: string): Buffer {
   return createHmac('sha256', key).update(data).digest();

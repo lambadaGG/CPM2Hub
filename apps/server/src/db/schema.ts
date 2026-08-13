@@ -63,4 +63,5 @@ export const trades = pgTable('trades', {
   peer: text('peer').notNull(),
   status: text('status', { enum: ['waiting', 'escrow', 'completed'] }).notNull().default('waiting'),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updated_at', { mode: 'number' }).notNull().default(0),
 });

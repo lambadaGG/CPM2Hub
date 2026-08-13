@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../db/index';
-import { trades } from '../db/schema';
+import { trades, users } from '../db/schema';
 import { getUser } from './auth';
 
 export const tradesRoute = new Hono();
@@ -28,6 +28,27 @@ tradesRoute.post('/trades', async (c) => {
   if (!body || !body.offer || !body.receive) return c.json({ error: 'invalid_body' }, 400);
 
   const kind = ['money', 'car', 'vinyl'].includes(body.kind) ? body.kind : 'money';
+  
+  // Валидация: длина offer/receive/peer (максимум 100 символов)
+  if (body.offer.length > 100 || body.receive.length > 100 || (body.peer && body.peer.length > 100)) {
+    return c.json({ error: 'field_too_long' }, 400);
+  }
+  
+  // Запрет сделки сам с собой (peer не должен равняться creatorId)
+  const creatorId = u.id;
+  const peer = body.peer?.trim();
+  if (peer && peer !== '' && Number(peer) === creatorId) {
+    return c.json({ error: 'self_trade' }, 400);
+  }
+  
+  // Валидация peer: проверяем, существует ли пользователь с таким telegramId
+  if (peer) {
+    const [peerUser] = await db.select().from(users).where(eq(users.telegramId, Number(peer)));
+    if (!peerUser) {
+      return c.json({ error: 'peer_not_found' }, 400);
+    }
+  }
+
   const [created] = await db
     .insert(trades)
     .values({

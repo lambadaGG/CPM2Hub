@@ -5,12 +5,6 @@ import { Icon } from '../components/Icons';
 import { Segmented } from '../components/Segmented';
 import { useToast } from '../components/Toast';
 
-const DEMO = [
-  { color: '#E6B800', title: 'Waiting for Buyer', sub: '', pct: 45 },
-  { color: '#2AABEE', title: 'In Escrow', sub: '', pct: 72 },
-  { color: '#34C759', title: 'Completed', sub: '', pct: 100 },
-];
-
 const KIND_LABELS: Record<Trade['kind'], string> = {
   car: 'Car for Car',
   money: 'Car for Money',
@@ -57,33 +51,14 @@ export function Escrow() {
       <header className="top">
         <div>
           <h1 className="page-title">ESCROW</h1>
-          <div className="logo-sub">SAFE P2P · CPM2 WALLET GUARANTEE</div>
+          <div className="logo-sub">CPM2 WALLET</div>
         </div>
       </header>
 
       <div className="chip-row">
-        <span className="chip"><span className="ch-dot ok" />5% Fee</span>
-        <span className="chip"><span className="ch-dot ok" />Bot status</span>
-        <span className="chip"><Icon id="i-gauge" className="icon" />1,240+ Safe Trades</span>
-      </div>
-
-      <div className="card">
-        <h2 className="card-title">Create Trade Form</h2>
-        <Segmented
-          options={[
-            { value: 'car', label: KIND_LABELS.car },
-            { value: 'money', label: KIND_LABELS.money },
-            { value: 'vinyl', label: KIND_LABELS.vinyl },
-          ]}
-          value={kind}
-          onChange={(v) => setKind(v as 'money' | 'car' | 'vinyl')}
-        />
-        <label className="field"><span>You Offer</span>
-          <input className="text-input" placeholder="What you offer..." value={offer} onChange={(e) => setOffer(e.target.value)} /></label>
-        <label className="field"><span>You Receive</span>
-          <input className="text-input" placeholder="What you want..." value={receive} onChange={(e) => setReceive(e.target.value)} /></label>
-        <label className="field"><span>Second Party Telegram ID</span>
-          <input className="text-input" placeholder="@nickname" value={peer} onChange={(e) => setPeer(e.target.value)} /></label>
+        <span className="chip">Trading available</span>
+        <span className="chip">Secure payments</span>
+        <span className="chip">Community vetted</span>
       </div>
 
       <div className="list-title"><h2>ACTIVE TRADES</h2><span className="count">{trades.length}</span></div>
@@ -103,13 +78,7 @@ export function Escrow() {
             );
           })
         ) : (
-          DEMO.map((d) => (
-            <div key={d.title} className="trade-card">
-              <span className="trade-dot" style={{ background: d.color }} />
-              <span className="trade-title">{d.title}</span>
-              <div className="trade-bar"><div className="trade-fill" style={{ width: `${d.pct}%`, background: d.color }} /></div>
-            </div>
-          ))
+          <div className="state-empty sm"><Icon id="i-power" className="icon" /><p>No trades yet</p></div>
         )}
       </div>
 

@@ -19,6 +19,7 @@ async function findOrCreateUser(telegramId: number, firstName: string, username?
   const [created] = await db
     .insert(users)
     .values({ telegramId, firstName, username: username ?? null, language: language ?? null, createdAt: Date.now() })
+    .onConflictDoNothing()
     .returning();
   return created;
 }

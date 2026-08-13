@@ -22,11 +22,6 @@ app.use(
 
 app.use('/api/*', auth);
 
-app.onError((err, c) => {
-  console.error('[error]', err.message);
-  return c.json({ error: err.message }, err.message.includes('DATABASE_URL') ? 503 : 500);
-});
-
 app.route('/api', meRoute);
 app.route('/api', productsRoute);
 app.route('/api', purchasesRoute);

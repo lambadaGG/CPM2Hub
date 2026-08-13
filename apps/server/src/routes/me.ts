@@ -32,3 +32,9 @@ meRoute.get('/me', async (c) => {
     totalSpent: paid?.total ?? 0,
   });
 });
+
+meRoute.delete('/me', async (c) => {
+  const u = getUser(c);
+  await db.delete(users).where(eq(users.id, u.id));
+  return c.json({ deleted: true });
+});

@@ -7,6 +7,9 @@ import { parseBuyPayload } from './lib/payments';
 
 let bot: Bot | null = null;
 
+// Secret token for webhook verification — задать в env WEBHOOK_SECRET
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
+
 export function getBot(): Bot {
   if (bot) return bot;
   const token = process.env.BOT_TOKEN ?? '';
@@ -17,9 +20,12 @@ export function getBot(): Bot {
 }
 
 export async function setupWebhook(bot: Bot): Promise<void> {
-  const url = process.env.PUBLIC_URL;
-  if (!url) throw new Error('PUBLIC_URL is not set (webhook mode)');
-  await bot.api.setWebhook(`${url}/webhook`);
+  const url = process.env.PUBLIC_URL ?? '';
+  // Добавляем https:// если не задано
+  const webhookUrl = url.startsWith('https://') ? url : `https://${url}`;
+  await bot.api.setWebhook(`${webhookUrl}/webhook`, {
+    secret_token: WEBHOOK_SECRET,
+  });
 }
 
 function registerHandlers(b: Bot) {
@@ -54,20 +60,28 @@ function registerHandlers(b: Bot) {
 
   b.on('message:successful_payment', async (ctx) => {
     const payment = ctx.message.successful_payment;
-    const parsed = parseBuyPayload(payment.invoice_payload);
+    const payload = payment.invoice_payload;
+    const parsed = parseBuyPayload(payload);
     if (!parsed) return;
 
     const [existing] = await db
       .select()
       .from(purchases)
-      .where(eq(purchases.payload, payment.invoice_payload));
+      .where(eq(purchases.payload, payload));
     if (!existing || existing.status === 'paid') return;
+
+    // Verify payer identity: Telegram user who paid must match the purchase creator
+    const payer = ctx.from;
+    if (payer?.id !== existing.userId) return;
+
+    // Verify amount matches product price
+    const [product] = await db.select().from(products).where(eq(products.id, existing.productId));
+    if (!product || payment.total_amount !== product.priceStars) return;
 
     await db.update(purchases)
       .set({ status: 'paid', chargeId: payment.telegram_payment_charge_id, amountStars: payment.total_amount })
       .where(eq(purchases.id, existing.id));
 
-    const [product] = await db.select().from(products).where(eq(products.id, existing.productId));
     if (product) {
       await db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id));
     }

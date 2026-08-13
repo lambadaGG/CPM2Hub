@@ -11,6 +11,18 @@ const DEMO = [
   { color: '#30D158', title: 'Completed', sub: '', pct: 100 },
 ];
 
+const KIND_LABELS: Record<Trade['kind'], string> = {
+  car: 'Car for Car',
+  money: 'Car for Money',
+  vinyl: 'Vinyl Preset',
+};
+
+const STATUS_META: Record<Trade['status'], { label: string; color: string }> = {
+  waiting: { label: 'Waiting for Buyer', color: '#FFD60A' },
+  escrow: { label: 'In Escrow', color: '#2AABEE' },
+  completed: { label: 'Completed', color: '#30D158' },
+};
+
 export function Escrow() {
   const toast = useToast();
   const [kind, setKind] = useState<'money' | 'car' | 'vinyl'>('car');
@@ -59,9 +71,9 @@ export function Escrow() {
         <h2 className="card-title">Create Trade Form</h2>
         <Segmented
           options={[
-            { value: 'car', label: 'Car for Money' },
-            { value: 'money', label: 'Car for Car' },
-            { value: 'vinyl', label: 'Vinyl Preset' },
+            { value: 'car', label: KIND_LABELS.car },
+            { value: 'money', label: KIND_LABELS.money },
+            { value: 'vinyl', label: KIND_LABELS.vinyl },
           ]}
           value={kind}
           onChange={(v) => setKind(v as 'money' | 'car' | 'vinyl')}
@@ -76,13 +88,29 @@ export function Escrow() {
 
       <div className="list-title"><h2>ACTIVE TRADES</h2><span className="count">{trades.length}</span></div>
       <div className="trade-cards">
-        {DEMO.map((d) => (
-          <div key={d.title} className="trade-card">
-            <span className="trade-dot" style={{ background: d.color }} />
-            <span className="trade-title">{d.title}</span>
-            <div className="trade-bar"><div className="trade-fill" style={{ width: `${d.pct}%`, background: d.color }} /></div>
-          </div>
-        ))}
+        {trades.length > 0 ? (
+          trades.map((t) => {
+            const st = STATUS_META[t.status];
+            return (
+              <div key={t.id} className="trade-card">
+                <span className="trade-dot" style={{ background: st.color }} />
+                <span className="trade-title">
+                  <strong>{KIND_LABELS[t.kind]}</strong>
+                  <span className="trade-exchg">{t.offer} → {t.receive}</span>
+                </span>
+                <span className="trade-status" style={{ color: st.color }}>{st.label}</span>
+              </div>
+            );
+          })
+        ) : (
+          DEMO.map((d) => (
+            <div key={d.title} className="trade-card">
+              <span className="trade-dot" style={{ background: d.color }} />
+              <span className="trade-title">{d.title}</span>
+              <div className="trade-bar"><div className="trade-fill" style={{ width: `${d.pct}%`, background: d.color }} /></div>
+            </div>
+          ))
+        )}
       </div>
 
       <button className="primary-btn wide cta-white" onClick={submit} disabled={sending}>

@@ -35,7 +35,12 @@ function registerHandlers(b: Bot) {
       `🏁 GearMarket\n\nDark marketplace for tuning configs: gearboxes, vinyl presets, nicknames.\n\nPayments in Telegram Stars.`,
       {
         reply_markup: {
-          inline_keyboard: [[{ text: 'Open GearMarket', web_app: { url: webAppUrl ?? '' } }]],
+          inline_keyboard: [
+            [{ text: 'Open GearMarket', web_app: { url: webAppUrl ?? '' } }],
+            [{ text: '📢 Announcements', url: 'https://t.me/CPM2Hub_Announcements' }],
+            [{ text: '💬 Community Chat', url: 'https://t.me/CPM2Hub_Community' }],
+            [{ text: '🆘 Support', url: 'https://t.me/CPM2Hub_Support' }],
+          ],
         },
       },
     );

@@ -12,7 +12,10 @@ meRoute.get('/me', async (c) => {
   if (!user) return c.json({ error: 'not_found' }, 404);
 
   const [paid] = await db
-    .select({ count: sql<number>`count(*)`.as('count'), total: sql<number>`coalesce(sum(amount_stars), 0)`.as('total') })
+    .select({
+      count: sql<number>`count(*)::int`.as('count'),
+      total: sql<number>`coalesce(sum(amount_stars), 0)::int`.as('total'),
+    })
     .from(purchases)
     .where(sql`${purchases.userId} = ${u.id} and ${purchases.status} = 'paid'`);
 

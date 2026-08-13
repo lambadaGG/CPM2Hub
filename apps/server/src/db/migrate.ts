@@ -14,7 +14,7 @@ if (!url) {
 const sqlPath = resolve(__dirname, '../../drizzle/0000_init.sql');
 const ddl = readFileSync(sqlPath, 'utf8');
 
-const client = postgres(url, { prepare: false, max: 1 });
+const client = postgres(url, { prepare: false, max: 1, ssl: 'require' });
 
 try {
   console.log('[migrate] applying 0000_init.sql ...');

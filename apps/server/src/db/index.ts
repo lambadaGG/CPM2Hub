@@ -11,7 +11,7 @@ let _db: ReturnType<typeof makeDb> | null = null;
 let unavailable: string | null = connectionString ? null : 'DATABASE_URL is not set';
 
 function makeDb() {
-  const client = postgres(connectionString, { prepare: false });
+  const client = postgres(connectionString, { prepare: false, ssl: 'require' });
   return drizzle(client, { schema });
 }
 

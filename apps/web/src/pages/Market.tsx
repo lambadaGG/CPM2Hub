@@ -91,16 +91,14 @@ export function Market({ user }: { user: User | null }) {
     <div className="screen market">
       <header className="top">
         <div className="user-bar">
-          <div className="user-avatar">{user ? (user.firstName || 'U')[0] : 'D'}</div>
+          <div className="user-avatar">{user ? (user.firstName || 'U')[0] : 'U'}</div>
           <div className="user-info">
-            <span className="user-name">{user ? user.firstName : 'Alex_Dev'}</span>
-            <span className="user-badge">P90</span>
-            <span className="user-id">ID: {user ? String(user.telegramId).slice(0, 8) : '84920192'}</span>
-            <span className="user-flag">🇺🇸 US</span>
+            <span className="user-name">{user ? user.firstName : 'User'}</span>
+            <span className="user-id">ID: {user ? String(user.telegramId).slice(0, 8) : '—'}</span>
           </div>
           <div className="user-bal">
             <Icon id="i-star" className="icon" />
-            <span>{balance != null ? balance : 450}</span>
+            <span>{balance != null ? balance : 0}</span>
           </div>
         </div>
       </header>
@@ -132,14 +130,6 @@ export function Market({ user }: { user: User | null }) {
         <div className="m-block">
           <span className="m-label">CATALOG</span>
           <span className="m-val">{(products.length || 0).toString().padStart(2, '0')} ITEMS</span>
-        </div>
-        <div className="m-block center">
-          <span className="m-label">RATING</span>
-          <span className="m-val">4.9</span>
-        </div>
-        <div className="m-block end">
-          <span className="m-label">SALES</span>
-          <span className="m-val">45.8K</span>
         </div>
       </div>
     </div>

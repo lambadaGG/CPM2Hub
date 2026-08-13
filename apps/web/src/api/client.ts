@@ -4,7 +4,11 @@ export function setApiInitData(value: string | null | undefined) {
   raw = value ?? null;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
+const ENV_API = import.meta.env.VITE_API_URL ?? '';
+const API_BASE =
+  ENV_API && !/^https?:\/\//.test(ENV_API) && !ENV_API.startsWith('/')
+    ? `https://${ENV_API}`
+    : ENV_API || '/api';
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {

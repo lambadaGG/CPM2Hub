@@ -14,12 +14,14 @@ export const NICK_STYLES: NickStyle[] = [
   { base: 'FUЯYX' },
 ];
 
+const SUBSTITUTABLE = NICK_STYLES.filter((s) => s.base.includes('FURYX'));
+
 export function renderNick(style: string, base: string): string {
   return style.replace('FURYX', base);
 }
 
 export function randomNick(): string {
   const base = NICK_BASES[Math.floor(Math.random() * NICK_BASES.length)];
-  const style = NICK_STYLES[Math.floor(Math.random() * NICK_STYLES.length)];
+  const style = SUBSTITUTABLE[Math.floor(Math.random() * SUBSTITUTABLE.length)];
   return renderNick(style.base, base);
 }

@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { getBot } from '../bot';
 
 export interface BuyPayload {
   productId: number;
@@ -25,6 +24,7 @@ export async function createInvoiceLink(args: {
   payload: string;
   amountStars: number;
 }): Promise<string> {
+  const { getBot } = await import('../bot');
   const bot = getBot();
   return bot.api.createInvoiceLink(args.title, args.description, args.payload, '', 'XTR', [
     { label: 'Config', amount: args.amountStars },

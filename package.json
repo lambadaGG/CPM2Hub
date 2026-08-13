@@ -12,6 +12,7 @@
     "build": "npm run build -w @gm/web",
     "start": "npm run start -w @gm/server",
     "db:push": "npm run db:push -w @gm/server",
+    "test": "npm test -w @gm/server && npm test -w @gm/web",
     "typecheck": "npm run typecheck -w @gm/server && npm run typecheck -w @gm/web"
   },
   "overrides": {

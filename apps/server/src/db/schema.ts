@@ -57,11 +57,14 @@ export const trades = pgTable('trades', {
   creatorId: integer('creator_id')
     .notNull()
     .references(() => users.id),
+  peerUserId: integer('peer_user_id').references(() => users.id),
   kind: text('kind', { enum: ['money', 'car', 'vinyl'] }).notNull(),
   offer: text('offer').notNull(),
   receive: text('receive').notNull(),
   peer: text('peer').notNull(),
-  status: text('status', { enum: ['waiting', 'escrow', 'completed'] }).notNull().default('waiting'),
+  status: text('status', { enum: ['waiting', 'escrow', 'completed', 'cancelled', 'disputed'] })
+    .notNull()
+    .default('waiting'),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   updatedAt: bigint('updated_at', { mode: 'number' }).notNull().default(0),
 });

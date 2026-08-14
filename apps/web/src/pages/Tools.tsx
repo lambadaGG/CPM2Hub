@@ -54,8 +54,8 @@ function GearboxCalc() {
           <path key={i} d={d} fill="none" stroke={i === chart.paths.length - 1 ? '#5AC8FA' : '#2AABEE'} strokeWidth={i === chart.paths.length - 1 ? 2.2 : 1.2} strokeLinecap="round" strokeOpacity={i === chart.paths.length - 1 ? 1 : 0.55} />
         ))}
         <line x1="0" y1="100" x2="200" y2="100" stroke="#fff" strokeOpacity="0.3" />
-        <text x="195" y="97" fontSize="7" fill="#8E8E93">{t('tools.rpm')}</text>
-        <text x="5" y="12" fontSize="7" fill="#8E8E93">{Math.round(chart.maxSpeed)} km/h</text>
+        <text x="195" y="97" fontSize="9" fill="#8E8E93">{t('tools.rpm')}</text>
+        <text x="5" y="12" fontSize="9" fill="#8E8E93">{Math.round(chart.maxSpeed)} km/h</text>
       </svg>
       <button className="primary-btn wide" onClick={async () => {
         await copyText(`FINAL=${fd.toFixed(2)};RATIO=${ratio.toFixed(2)};HP=${hp};NM=${nm}`);

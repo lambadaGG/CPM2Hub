@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from './db/index';
 import { products, purchases, topups, users } from './db/schema';
 import { parseBuyPayload, parseTopupPayload } from './lib/payments';
+import { actTrade, buildTradeMessage, type TradeAction } from './lib/escrow';
 
 let bot: Bot | null = null;
 
@@ -152,5 +153,38 @@ function registerHandlers(b: Bot) {
         `Saved in Profile → My Downloads.`,
       ].join('\n'),
     );
+  });
+
+  b.on('callback_query:data', async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    const m = /^escrow:(accept|decline|cancel|complete|dispute):(\d+)$/.exec(data);
+    if (!m) return;
+
+    const action = m[1] as TradeAction;
+    const id = Number(m[2]);
+    const tgId = ctx.from?.id;
+    if (!tgId) {
+      await ctx.answerCallbackQuery({ text: 'Unknown user' });
+      return;
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, tgId));
+    if (!user) {
+      await ctx.answerCallbackQuery({ text: 'User not found' });
+      return;
+    }
+
+    const result = await actTrade(id, action, user.id);
+    if (!result.ok) {
+      await ctx.answerCallbackQuery({ text: `Not allowed: ${result.error}` });
+      return;
+    }
+
+    await ctx.answerCallbackQuery({ text: `Trade #${id}: ${result.trade.status}` });
+    try {
+      await ctx.editMessageText(buildTradeMessage(result.trade));
+    } catch {
+      /* message may have been deleted or already edited */
+    }
   });
 }

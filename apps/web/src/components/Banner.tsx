@@ -39,7 +39,11 @@ export function Banner() {
         <div className="eyebrow"><span className="dot" />GLOBAL MARKETPLACE</div>
         <div>
           <h1>Instant Gearbox<br />& Livery Delivery</h1>
-          <button className="cta-white" style={{ marginTop: 14 }}>
+          <button
+            className="cta-white"
+            style={{ marginTop: 14 }}
+            onClick={() => document.querySelector('.tiles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
             Explore Marketplace
             <Icon id="i-bolt" />
           </button>

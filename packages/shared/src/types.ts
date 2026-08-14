@@ -34,14 +34,19 @@ export interface Purchase {
   product?: Product;
 }
 
+export type TradeStatus = 'waiting' | 'escrow' | 'completed' | 'cancelled' | 'disputed';
+
 export interface Trade {
   id: number;
   kind: 'money' | 'car' | 'vinyl';
   offer: string;
   receive: string;
   peer: string;
-  status: 'waiting' | 'escrow' | 'completed';
+  peerUserId: number | null;
+  status: TradeStatus;
+  role: 'creator' | 'peer';
   createdAt: number;
+  updatedAt: number;
 }
 
 export interface MeResponse {

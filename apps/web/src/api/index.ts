@@ -2,7 +2,7 @@ import { api } from './client';
 import type { BuyRequest, BuyResponse, Category, MeResponse, Product, Purchase, Trade } from '@gm/shared';
 
 export { api } from './client';
-export type { BuyRequest, BuyResponse, Category, MeResponse, Product, Purchase, Trade, User } from '@gm/shared';
+export type { BuyRequest, BuyResponse, Category, MeResponse, Product, Purchase, Trade, TradeStatus, User } from '@gm/shared';
 
 export const getMe = () => api<MeResponse>('/me');
 export const getProducts = (category?: Category) =>
@@ -11,6 +11,8 @@ export const getDownloads = () => api<Purchase[]>('/my/downloads');
 export const getTrades = () => api<Trade[]>('/trades');
 export const createTrade = (body: { kind: string; offer: string; receive: string; peer: string }) =>
   api<{ id: number; status: string }>('/trades', { method: 'POST', body: JSON.stringify(body) });
+export const tradeAction = (id: number, action: 'accept' | 'decline' | 'cancel' | 'complete' | 'dispute') =>
+  api<{ id: number; status: string }>(`/trades/${id}/${action}`, { method: 'POST' });
 export const buyProduct = (req: BuyRequest) =>
   api<BuyResponse>(`/products/${req.productId}/buy`, { method: 'POST' });
 export const topupStars = (amount: number) =>

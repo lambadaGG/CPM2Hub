@@ -18,8 +18,6 @@ const GLYPHS: Record<string, string> = {
   shield: 'i-shieldcheck',
 };
 
-const USD_RATE = 50; // 1 Star ≈ $0.02
-
 function Tile({ p }: { p: Product }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -41,8 +39,6 @@ function Tile({ p }: { p: Product }) {
     }
   };
 
-  const usdPrice = (p.priceStars / USD_RATE).toFixed(2);
-
   return (
     <article className={`tile${busy ? ' busy' : ''}`}>
       <div className="tk">
@@ -56,7 +52,7 @@ function Tile({ p }: { p: Product }) {
       <h3 className="t-title">{p.title}</h3>
       <p className="t-sub">{p.subtitle}</p>
       <button className="t-buy" onClick={click} disabled={busy}>
-        <span>{p.priceStars} Stars (${usdPrice})</span>
+        <span>{p.priceStars} ⭐</span>
         <span>{t('market.buy')}</span>
       </button>
     </article>

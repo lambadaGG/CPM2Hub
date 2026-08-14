@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  adminGrant,
   adminModerate,
   adminRefund,
   getAdminPending,
@@ -113,6 +114,47 @@ function Refunds({ items, onRefunded }: { items: AdminPurchase[]; onRefunded: ()
   );
 }
 
+function Grant() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [telegramId, setTelegramId] = useState('');
+  const [stars, setStars] = useState('');
+  const [tn, setTn] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const id = Number(telegramId);
+    if (!Number.isInteger(id) || id <= 0) return toast(t('admin.grantErr'));
+    setBusy(true);
+    try {
+      const credits: { stars?: number; tn?: number } = {};
+      const s = Number(stars);
+      const tnV = Number(tn);
+      if (Number.isInteger(s) && s !== 0) credits.stars = s;
+      if (Number.isInteger(tnV) && tnV !== 0) credits.tn = tnV;
+      if (Object.keys(credits).length === 0) return toast(t('admin.grantErr'));
+      const res = await adminGrant(id, credits);
+      toast(`${t('admin.granted')} ID ${res.telegramId}: ⭐${res.creditsStars} / ТН${res.creditsTn}`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('admin.err'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      <h2 className="card-title">{t('admin.grant')}</h2>
+      <div className="grant-row">
+        <input className="field" placeholder="Telegram ID" value={telegramId} onChange={(e) => setTelegramId(e.target.value)} inputMode="numeric" />
+        <input className="field" placeholder={`⭐ ${t('admin.grantStars')}`} value={stars} onChange={(e) => setStars(e.target.value)} inputMode="numeric" />
+        <input className="field" placeholder={`ТН ${t('admin.grantStars')}`} value={tn} onChange={(e) => setTn(e.target.value)} inputMode="numeric" />
+        <button className="mini-btn ok" disabled={busy} onClick={submit}>{t('admin.grantBtn')}</button>
+      </div>
+    </div>
+  );
+}
+
 export function Admin() {
   const { t } = useI18n();
   const [stats, setStats] = useState<AdminStarsStats | null>(null);
@@ -150,6 +192,7 @@ export function Admin() {
       ) : (
         <>
           <Stats stats={stats} />
+          <Grant />
           <Moderation items={pending} onDone={load} />
           <Refunds items={purchases} onRefunded={load} />
         </>

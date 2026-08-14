@@ -22,6 +22,7 @@ function getUser(): User | null {
       username: u.username ?? null,
       firstName: u.first_name ?? '',
       creditsStars: 0,
+      creditsTn: 0,
       createdAt: Date.now(),
     };
   } catch {

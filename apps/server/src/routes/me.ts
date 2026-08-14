@@ -26,6 +26,7 @@ meRoute.get('/me', async (c) => {
       username: user.username,
       firstName: user.firstName,
       creditsStars: user.creditsStars,
+      creditsTn: user.creditsTn,
       createdAt: user.createdAt,
     },
     purchasesCount: paid?.count ?? 0,

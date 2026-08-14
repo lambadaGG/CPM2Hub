@@ -11,6 +11,7 @@ import {
   validateListing,
   validatePatch,
 } from '../lib/market';
+import { createInvoiceLink } from '../lib/payments';
 import type { Category, MediaType, ModerationStatus, Product } from '@gm/shared';
 
 export { validateListing, validatePatch } from '../lib/market';
@@ -207,44 +208,80 @@ productsRoute.post('/products/:id/pay', async (c) => {
 
   const [prod] = await db.select().from(products).where(eq(products.id, id));
   if (!prod || !prod.active || prod.moderationStatus !== 'approved') return c.json({ error: 'not_found' }, 404);
-  if (prod.sellerId == null) return c.json({ error: 'invoice_only' }, 400);
   if (prod.sellerId === u.id) return c.json({ error: 'self_pay' }, 400);
 
   const price = prod.priceStars;
 
   try {
-    const result = await db.transaction(async (tx) => {
-      const [deducted] = await tx
-        .update(users)
-        .set({ creditsStars: sql`${users.creditsStars} - ${price}` })
-        .where(and(eq(users.id, u.id), sql`${users.creditsStars} >= ${price}`))
-        .returning({ id: users.id });
-      if (!deducted) return { error: 'not_enough_stars' as const };
+    const [buyer] = await db.select().from(users).where(eq(users.id, u.id));
+    const tnOk = buyer != null && buyer.creditsTn >= price;
+    const starsOk = buyer != null && buyer.creditsStars >= price;
 
-      await tx
-        .update(users)
-        .set({ creditsStars: sql`${users.creditsStars} + ${price}` })
-        .where(eq(users.id, prod.sellerId!));
+    // Auto-selection: TN account first, then Stars balance, else Telegram invoice.
+    if (tnOk || starsOk) {
+      const useTn = tnOk;
+      const result = await db.transaction(async (tx) => {
+        if (useTn) {
+          const [deducted] = await tx
+            .update(users)
+            .set({ creditsTn: sql`${users.creditsTn} - ${price}` })
+            .where(and(eq(users.id, u.id), sql`${users.creditsTn} >= ${price}`))
+            .returning({ id: users.id });
+          if (!deducted) return { error: 'not_enough_tn' as const };
+          if (prod.sellerId != null) {
+            await tx
+              .update(users)
+              .set({ creditsTn: sql`${users.creditsTn} + ${price}` })
+              .where(eq(users.id, prod.sellerId));
+          }
+        } else {
+          const [deducted] = await tx
+            .update(users)
+            .set({ creditsStars: sql`${users.creditsStars} - ${price}` })
+            .where(and(eq(users.id, u.id), sql`${users.creditsStars} >= ${price}`))
+            .returning({ id: users.id });
+          if (!deducted) return { error: 'not_enough_stars' as const };
+          if (prod.sellerId != null) {
+            await tx
+              .update(users)
+              .set({ creditsStars: sql`${users.creditsStars} + ${price}` })
+              .where(eq(users.id, prod.sellerId));
+          }
+        }
 
-      const [purchase] = await tx
-        .insert(purchases)
-        .values({
-          userId: u.id,
-          productId: prod.id,
-          chargeId: null,
-          payload: makePayload(prod.id, u.id),
-          amountStars: price,
-          status: 'paid',
-          createdAt: Date.now(),
-        })
-        .returning();
+        const [purchase] = await tx
+          .insert(purchases)
+          .values({
+            userId: u.id,
+            productId: prod.id,
+            chargeId: null,
+            payload: makePayload(prod.id, u.id),
+            amountStars: price,
+            status: 'paid',
+            createdAt: Date.now(),
+          })
+          .returning();
 
-      await tx.update(products).set({ downloads: prod.downloads + 1 }).where(eq(products.id, prod.id));
+        await tx.update(products).set({ downloads: prod.downloads + 1 }).where(eq(products.id, prod.id));
 
-      return { ok: true as const, purchaseId: purchase.id };
+        return { ok: true as const, method: (useTn ? 'tn' : 'stars') as 'tn' | 'stars', purchaseId: purchase.id };
+      });
+      if ('error' in result) return c.json({ error: result.error }, 400);
+      return c.json({ purchaseId: result.purchaseId, method: result.method, productTitle: prod.title, configCode: prod.configCode });
+    }
+
+    // Neither balance covers the price → Telegram Stars invoice.
+    const payload = makePayload(prod.id, u.id);
+    const link = await createInvoiceLink({
+      title: prod.title,
+      description: `${prod.subtitle}\nCategory: ${prod.category}\nVerified config`,
+      payload,
+      amountStars: price,
     });
-    if ('error' in result) return c.json({ error: result.error }, 400);
-    return c.json({ purchaseId: result.purchaseId, productTitle: prod.title, configCode: prod.configCode });
+    await db.insert(purchases)
+      .values({ userId: u.id, productId: prod.id, payload, amountStars: price, status: 'pending', createdAt: Date.now() });
+
+    return c.json({ purchaseId: 0, productTitle: prod.title, configCode: '', method: 'invoice', link });
   } catch (err) {
     console.error('[pay] transaction failed', err);
     return c.json({ error: 'pay_failed' }, 500);

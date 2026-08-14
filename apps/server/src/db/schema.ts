@@ -9,6 +9,7 @@ export const users = pgTable(
     firstName: text('first_name').notNull(),
     language: text('language'),
     creditsStars: integer('credits_stars').notNull().default(0),
+    creditsTn: integer('credits_tn').notNull().default(0),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   },
   (t) => [uniqueIndex('users_telegram_id_idx').on(t.telegramId)],

@@ -21,7 +21,7 @@ const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   completed: { label: 'DONE', cls: 'ok' },
 };
 
-const TOPUP_AMOUNTS = [50, 100, 200, 500];
+const TOPUP_AMOUNTS = [1, 50, 100, 200, 500];
 
 function SubCard() {
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -168,6 +168,7 @@ export function Profile({ user: initial }: { user: User | null }) {
 
       <div className="stats-row">
         <div className="stat"><span className="st-label">{t('profile.stars')}</span><span className="st-val">{fmtCompact(u?.creditsStars ?? 0)}</span></div>
+        <div className="stat"><span className="st-label">{t('profile.tn')}</span><span className="st-val">{fmtCompact(u?.creditsTn ?? 0)}</span></div>
         <div className="stat"><span className="st-label">{t('profile.downloaded')}</span><span className="st-val">{downloads.length.toString().padStart(2, '0')}</span></div>
       </div>
 

@@ -123,6 +123,8 @@ body {
   flex: none;
 }
 .user-bal .icon { width: 14px; height: 14px; fill: var(--warn); stroke: var(--warn); }
+.user-bal.tn { border-color: var(--accent, #7c3aed); }
+.user-bal.tn .icon { fill: var(--accent, #7c3aed); stroke: var(--accent, #7c3aed); }
 
 .page-title { font-size: 20px; font-weight: 800; letter-spacing: 1.2px; margin: 0; }
 
@@ -867,7 +869,7 @@ body {
 
 /* ---------- Top Up ---------- */
 .topup-sub { margin: 0 0 12px; font-size: 11px; color: var(--sub); }
-.topup-amounts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.topup-amounts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
 .topup-amt {
   display: flex; align-items: center; justify-content: center; gap: 4px;
   font-size: 13px; font-weight: 700;
@@ -1194,6 +1196,18 @@ body {
   border-radius: 12px;
 }
 .admin-list { display: flex; flex-direction: column; gap: 10px; }
+.grant-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grant-row .field {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: 9px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
 .admin-item {
   display: flex;
   align-items: center;

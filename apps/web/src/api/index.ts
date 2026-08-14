@@ -71,3 +71,5 @@ export const getAdminPurchases = (limit = 50) =>
   api<AdminPurchase[]>(`/admin/purchases?limit=${limit}`);
 export const adminRefund = (purchaseId: number) =>
   api<{ ok: boolean; purchaseId: number }>('/admin/refund', { method: 'POST', body: JSON.stringify({ purchaseId }) });
+export const adminGrant = (telegramId: number, credits: { stars?: number; tn?: number }) =>
+  api<{ ok: boolean; telegramId: number; creditsStars: number; creditsTn: number }>('/admin/grant', { method: 'POST', body: JSON.stringify({ telegramId, ...credits }) });

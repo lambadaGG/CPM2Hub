@@ -112,6 +112,32 @@ adminRoute.post('/admin/refund', async (c) => {
   return c.json({ ok: true, purchaseId: id });
 });
 
+adminRoute.post('/admin/grant', async (c) => {
+  const u = getUser(c);
+  if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
+
+  const body = await c.req.json().catch(() => null);
+  const telegramId = Number(body?.telegramId);
+  const stars = Number(body?.stars);
+  const tn = Number(body?.tn);
+  if (!Number.isInteger(telegramId)) return c.json({ error: 'bad_id' }, 400);
+  if (!Number.isInteger(stars) && !Number.isInteger(tn)) return c.json({ error: 'bad_amount' }, 400);
+
+  const [target] = await db.select().from(users).where(eq(users.telegramId, telegramId));
+  if (!target) return c.json({ error: 'not_found' }, 404);
+
+  const [updated] = await db
+    .update(users)
+    .set({
+      ...(Number.isInteger(stars) ? { creditsStars: sql`${users.creditsStars} + ${stars}` } : {}),
+      ...(Number.isInteger(tn) ? { creditsTn: sql`${users.creditsTn} + ${tn}` } : {}),
+    })
+    .where(eq(users.id, target.id))
+    .returning({ creditsStars: users.creditsStars, creditsTn: users.creditsTn });
+
+  return c.json({ ok: true, telegramId, creditsStars: updated?.creditsStars ?? target.creditsStars, creditsTn: updated?.creditsTn ?? target.creditsTn });
+});
+
 adminRoute.post('/admin/products/:id/moderate', async (c) => {
   const u = getUser(c);
   if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);

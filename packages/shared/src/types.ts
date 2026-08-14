@@ -66,6 +66,8 @@ export interface PayResponse {
   purchaseId: number;
   productTitle: string;
   configCode: string;
+  method?: 'tn' | 'stars' | 'invoice';
+  link?: string | null;
 }
 
 export interface User {
@@ -74,6 +76,7 @@ export interface User {
   username: string | null;
   firstName: string;
   creditsStars: number;
+  creditsTn: number;
   createdAt: number;
 }
 

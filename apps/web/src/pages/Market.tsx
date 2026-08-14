@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { openInvoice, openTelegramLink } from '@telegram-apps/sdk';
-import { getMe, getProducts, buyProduct, payProduct } from '../api';
+import { getMe, getProducts, payProduct } from '../api';
 import { ALL_CATEGORIES, CATEGORY_META } from '../api';
 import type { Category, PayResponse, Product, User } from '../api';
 import { Banner } from '../components/Banner';
@@ -8,6 +8,27 @@ import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useI18n } from '../i18n';
 import { fmtCompact } from '../utils';
+
+async function openPayLink(link: string, onInvoicePaid: () => void, t: (k: string) => string, toast: (m: string) => void) {
+  try {
+    // Official Mini App flow: web_app_open_invoice → invoice_closed status
+    const status = await openInvoice(link, 'url');
+    if (status === 'paid') {
+      toast(t('market.invoicePaid'));
+      onInvoicePaid();
+    } else if (status === 'pending') {
+      toast(t('market.invoicePending'));
+    } else if (status === 'failed') {
+      toast(t('market.invoiceFailed'));
+    } else {
+      toast(t('market.invoiceCancelled'));
+    }
+  } catch {
+    // Fallback for environments without openInvoice support
+    openTelegramLink(link);
+    toast(t('market.invoice'));
+  }
+}
 
 function Preview({ p }: { p: Product }) {
   const { t } = useI18n();
@@ -89,9 +110,10 @@ function Preview({ p }: { p: Product }) {
   );
 }
 
-function Tile({ p, balance, meId, onPaid, onInvoicePaid, onOpenEscrow }: {
+function Tile({ p, balance, tn, meId, onPaid, onInvoicePaid, onOpenEscrow }: {
   p: Product;
   balance: number | null;
+  tn: number | null;
   meId: number | null;
   onPaid: (res: PayResponse) => void;
   onInvoicePaid: () => void;
@@ -102,46 +124,18 @@ function Tile({ p, balance, meId, onPaid, onInvoicePaid, onOpenEscrow }: {
   const { t } = useI18n();
   const meta = CATEGORY_META[p.category];
   const mine = p.sellerId != null && p.sellerId === meId;
-  const canPay = balance != null && balance >= p.priceStars;
-
-  const buy = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const res = await buyProduct({ productId: p.id });
-      if (res.link) {
-        try {
-          // Official Mini App flow: web_app_open_invoice → invoice_closed status
-          const status = await openInvoice(res.link, 'url');
-          if (status === 'paid') {
-            toast(t('market.invoicePaid'));
-            onInvoicePaid();
-          } else if (status === 'pending') {
-            toast(t('market.invoicePending'));
-          } else if (status === 'failed') {
-            toast(t('market.invoiceFailed'));
-          } else {
-            toast(t('market.invoiceCancelled'));
-          }
-        } catch {
-          // Fallback for environments without openInvoice support
-          openTelegramLink(res.link);
-          toast(t('market.invoice'));
-        }
-      }
-    } catch (e) {
-      toast(e instanceof Error ? e.message : t('market.invoice'));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const canPay = (balance != null && balance >= p.priceStars) || (tn != null && tn >= p.priceStars);
 
   const pay = async () => {
     if (busy) return;
     setBusy(true);
     try {
       const res = await payProduct(p.id);
-      onPaid(res);
+      if (res.link) {
+        await openPayLink(res.link, onInvoicePaid, t, toast);
+      } else {
+        onPaid(res);
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : t('market.notEnough'));
     } finally {
@@ -156,15 +150,14 @@ function Tile({ p, balance, meId, onPaid, onInvoicePaid, onOpenEscrow }: {
       onOpenEscrow?.();
       return;
     }
-    if (p.sellerId != null && canPay) pay();
-    else buy();
+    pay();
   };
 
   const label = mine
     ? t('market.yours')
     : meta?.escrowOnly
       ? t('market.escrowOpen')
-      : p.sellerId != null && canPay
+      : canPay
         ? t('market.pay')
         : t('market.buy');
 
@@ -214,6 +207,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
   const [products, setProducts] = useState<Product[]>([]);
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
+  const [tn, setTn] = useState<number | null>(null);
   const [payRes, setPayRes] = useState<PayResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
@@ -223,7 +217,10 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
     setError(null);
     try {
       const [me, prods] = await Promise.all([getMe().catch(() => null), getProducts()]);
-      if (me) setBalance(me.user.creditsStars);
+      if (me) {
+        setBalance(me.user.creditsStars);
+        setTn(me.user.creditsTn);
+      }
       setProducts(prods);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('market.all'));
@@ -259,6 +256,10 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
             <Icon id="i-star" className="icon" />
             <span>{balance != null ? balance : 0}</span>
           </div>
+          <div className="user-bal tn">
+            <Icon id="i-tn" className="icon" />
+            <span>{tn != null ? tn : 0}</span>
+          </div>
           {onOpenSell && (
             <button className="sell-entry" onClick={onOpenSell}>
               <Icon id="i-upload" className="icon" />
@@ -290,7 +291,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       ) : (
         <div className="tiles">
           {filtered.map((p) => (
-            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onInvoicePaid={() => load()} onOpenEscrow={onOpenEscrow} />
+            <Tile key={p.id} p={p} balance={balance} tn={tn} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onInvoicePaid={() => load()} onOpenEscrow={onOpenEscrow} />
           ))}
           {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>

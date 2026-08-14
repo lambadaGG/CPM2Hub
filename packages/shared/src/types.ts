@@ -1,11 +1,22 @@
-export type Category = 'gearbox' | 'vinyl' | 'tune' | 'nick';
+import type { Category, MediaType, ModerationStatus, SellCategory } from './market';
 
-export type SellCategory = 'gearbox' | 'vinyl' | 'tune';
+export * from './market';
+
+export type Params = Record<string, string | number | string[] | null>;
 
 export interface SellerInfo {
   id: number;
   username: string | null;
   firstName: string;
+}
+
+export interface ProductMedia {
+  type: MediaType;
+  previewUrl?: string | null;
+  videoUrl?: string | null;
+  audioUrl?: string | null;
+  beforeUrl?: string | null;
+  afterUrl?: string | null;
 }
 
 export interface Product {
@@ -23,6 +34,10 @@ export interface Product {
   sortOrder: number;
   sellerId: number | null;
   seller?: SellerInfo | null;
+  media?: ProductMedia;
+  serverName?: string | null;
+  params?: Params;
+  moderationStatus: ModerationStatus;
 }
 
 export interface CreateProductRequest {
@@ -31,6 +46,9 @@ export interface CreateProductRequest {
   subtitle?: string;
   priceStars: number;
   configCode: string;
+  media?: ProductMedia;
+  serverName?: string;
+  params?: Params;
 }
 
 export interface PatchProductRequest {
@@ -39,6 +57,9 @@ export interface PatchProductRequest {
   priceStars?: number;
   configCode?: string;
   active?: boolean;
+  media?: ProductMedia;
+  serverName?: string;
+  params?: Params;
 }
 
 export interface PayResponse {

@@ -35,7 +35,7 @@ purchasesRoute.post('/products/:id/buy', async (c) => {
   if (!Number.isInteger(id)) return c.json({ error: 'bad_id' }, 400);
 
   const [product] = await db.select().from(products).where(eq(products.id, id));
-  if (!product || !product.active) return c.json({ error: 'not_found' }, 404);
+  if (!product || !product.active || product.moderationStatus !== 'approved') return c.json({ error: 'not_found' }, 404);
 
   const payload = makeBuyPayload(product.id, u.id);
   const link = await createInvoiceLink({

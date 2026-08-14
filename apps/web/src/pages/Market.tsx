@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { openTelegramLink } from '@telegram-apps/sdk';
 import { getMe, getProducts, buyProduct, payProduct } from '../api';
+import { ALL_CATEGORIES, CATEGORY_META } from '../api';
 import type { Category, PayResponse, Product, User } from '../api';
 import { Banner } from '../components/Banner';
 import { Icon } from '../components/Icons';
@@ -8,24 +9,99 @@ import { useToast } from '../components/Toast';
 import { useI18n } from '../i18n';
 import { fmtCompact } from '../utils';
 
-const GLYPHS: Record<string, string> = {
-  gear: 'i-gear',
-  gauge: 'i-gauge',
-  key: 'i-key',
-  drop: 'i-dropper',
-  disc: 'i-disc',
-  type: 'i-type',
-  shield: 'i-shieldcheck',
-};
+function Preview({ p }: { p: Product }) {
+  const { t } = useI18n();
+  const meta = CATEGORY_META[p.category];
+  const glyph = `i-${meta?.glyph ?? 'disc'}`;
+  const mt = p.media?.type ?? 'photo';
+  const hp = typeof p.params?.hp === 'number' ? p.params.hp : null;
 
-function Tile({ p, balance, meId, onPaid }: { p: Product; balance: number | null; meId: number | null; onPaid: (res: PayResponse) => void }) {
+  let zone: React.ReactNode;
+  if (mt === 'before_after') {
+    zone = p.media?.beforeUrl || p.media?.afterUrl ? (
+      <div className="t-ba">
+        {p.media?.beforeUrl && (
+          <div className="t-ba-item">
+            <img src={p.media.beforeUrl} alt="before" loading="lazy" />
+            <span className="t-ba-tag">BEFORE</span>
+          </div>
+        )}
+        <span className="t-ba-arrow">→</span>
+        {p.media?.afterUrl && (
+          <div className="t-ba-item">
+            <img src={p.media.afterUrl} alt="after" loading="lazy" />
+            <span className="t-ba-tag">AFTER</span>
+          </div>
+        )}
+      </div>
+    ) : (
+      <Icon id={glyph} className="icon tk-icon" />
+    );
+  } else if (mt === 'video') {
+    zone = (
+      <div className="t-video">
+        {p.media?.previewUrl ? (
+          <img src={p.media.previewUrl} alt={p.title} loading="lazy" className="t-img" />
+        ) : (
+          <Icon id={glyph} className="icon tk-icon" />
+        )}
+        <span className="t-play-lg"><Icon id="i-power" className="icon" /></span>
+        {hp != null && <span className="t-hp">{hp} {t('market.hp')}</span>}
+      </div>
+    );
+  } else if (mt === 'audio') {
+    const play = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (p.media?.audioUrl) {
+        try {
+          const a = new Audio(p.media.audioUrl);
+          a.play().catch(() => {});
+        } catch { /* ignore */ }
+      }
+    };
+    zone = (
+      <button className="t-audio" onClick={play}>
+        <span className="t-play"><Icon id="i-power" className="icon" /></span>
+        <span className="t-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /></span>
+        <span className="t-dur">{t('market.audioNote')}</span>
+      </button>
+    );
+  } else if (mt === 'plate') {
+    const plateText = typeof p.params?.plateText === 'string' ? p.params.plateText.toUpperCase() : p.title.toUpperCase();
+    zone = <span className="t-plate">{plateText}</span>;
+  } else {
+    zone = p.media?.previewUrl ? (
+      <img src={p.media.previewUrl} alt={p.title} loading="lazy" className="t-img" />
+    ) : (
+      <Icon id={glyph} className="icon tk-icon" />
+    );
+  }
+
+  return (
+    <div className="t-prev">
+      {zone}
+      <span className="t-badge">{t(`market.${p.category}` as never)}</span>
+      <span className="t-buys">↓ {fmtCompact(p.downloads)}</span>
+      {p.verified && <span className="t-verified"><Icon id="i-check" className="icon" /></span>}
+      {p.serverName && <span className="t-server"><Icon id="i-globe" className="icon" />{p.serverName}</span>}
+      {meta?.escrowOnly && <span className="t-escrow">{t('market.escrowTag')}</span>}
+    </div>
+  );
+}
+
+function Tile({ p, balance, meId, onPaid, onOpenEscrow }: {
+  p: Product;
+  balance: number | null;
+  meId: number | null;
+  onPaid: (res: PayResponse) => void;
+  onOpenEscrow?: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const { t } = useI18n();
-  const isUser = p.sellerId != null;
-  const mine = isUser && p.sellerId === meId;
+  const meta = CATEGORY_META[p.category];
+  const mine = p.sellerId != null && p.sellerId === meId;
   const canPay = balance != null && balance >= p.priceStars;
-  const sellerName = p.seller?.username ? `@${p.seller.username}` : p.seller?.firstName ?? null;
 
   const buy = async () => {
     if (busy) return;
@@ -56,36 +132,42 @@ function Tile({ p, balance, meId, onPaid }: { p: Product; balance: number | null
     }
   };
 
+  const mainAction = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mine || busy) return;
+    if (meta?.escrowOnly) {
+      onOpenEscrow?.();
+      return;
+    }
+    if (p.sellerId != null && canPay) pay();
+    else buy();
+  };
+
+  const label = mine
+    ? t('market.yours')
+    : meta?.escrowOnly
+      ? t('market.escrowOpen')
+      : p.sellerId != null && canPay
+        ? t('market.pay')
+        : t('market.buy');
+
   return (
-    <article className={`tile${busy ? ' busy' : ''}`}>
-      <div className="tk">
-        <Icon id={GLYPHS[p.glyph] ?? 'i-disc'} className="icon tk-icon" />
-        {p.verified && <span className="tk-verified"><Icon id="i-check" className="icon" /></span>}
-      </div>
-      <div className="t-meta">
-        <span className="t-badge">{p.category.toUpperCase()}</span>
-        {sellerName && <span className="t-seller">{sellerName}</span>}
-        <span className="t-purchases">↓ {fmtCompact(p.downloads)}</span>
-      </div>
-      <h3 className="t-title">{p.title}</h3>
-      <p className="t-sub">{p.subtitle}</p>
-      {isUser ? (
-        <div className="t-buy-row">
-          <button className={`t-buy pay${!canPay ? ' disabled' : ''}`} onClick={pay} disabled={busy || mine || !canPay} title={mine ? t('market.yours') : ''}>
-            <span>{p.priceStars} ⭐</span>
-            <span>{mine ? t('market.yours') : t('market.pay')}</span>
-          </button>
-          <button className="t-buy" onClick={buy} disabled={busy}>
-            <span>{p.priceStars} ⭐</span>
-            <span>{t('market.buy')}</span>
+    <article className={`tile${busy ? ' busy' : ''}`} onClick={mainAction}>
+      <Preview p={p} />
+      <div className="t-body">
+        <h3 className="t-title">{p.title}</h3>
+        <p className="t-sub">{p.subtitle}</p>
+        <div className="t-foot">
+          <span className="t-price">{p.priceStars} ⭐</span>
+          <button
+            className={`t-buy${meta?.escrowOnly ? ' warn' : ' glow'}${mine ? ' disabled' : ''}`}
+            onClick={mainAction}
+            disabled={busy || mine}
+          >
+            {label}
           </button>
         </div>
-      ) : (
-        <button className="t-buy" onClick={buy} disabled={busy}>
-          <span>{p.priceStars} ⭐</span>
-          <span>{t('market.buy')}</span>
-        </button>
-      )}
+      </div>
     </article>
   );
 }
@@ -94,20 +176,19 @@ function EscrowTile({ onOpen }: { onOpen: () => void }) {
   const { t } = useI18n();
   return (
     <article className="tile tile-escrow" onClick={onOpen}>
-      <div className="tk">
+      <div className="t-prev">
         <Icon id="i-shield" className="icon tk-icon" />
-        <span className="tk-verified"><Icon id="i-check" className="icon" /></span>
-      </div>
-      <div className="t-meta">
         <span className="t-badge">{t('market.safe')}</span>
-        <span className="t-purchases">{t('market.escrowTag')}</span>
+        <span className="t-verified"><Icon id="i-check" className="icon" /></span>
       </div>
-      <h3 className="t-title">{t('market.escrow.title')}</h3>
-      <p className="t-sub">{t('market.escrow.sub')}</p>
-      <button className="t-buy" onClick={onOpen}>
-        <span>{t('market.escrow.buy')}</span>
-        <span>{t('market.escrow.open')}</span>
-      </button>
+      <div className="t-body">
+        <h3 className="t-title">{t('market.escrow.title')}</h3>
+        <p className="t-sub">{t('market.escrow.sub')}</p>
+        <div className="t-foot">
+          <span className="t-price">{t('market.escrowTag')}</span>
+          <button className="t-buy warn" onClick={onOpen}>{t('market.escrow.open')}</button>
+        </div>
+      </div>
     </article>
   );
 }
@@ -120,13 +201,6 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
   const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
   const toast = useToast();
-
-  const CATS: Array<{ value: Category | 'all'; label: string }> = [
-    { value: 'all', label: t('market.all') },
-    { value: 'gearbox', label: t('market.gearbox') },
-    { value: 'vinyl', label: t('market.vinyl') },
-    { value: 'tune', label: t('market.tune') },
-  ];
 
   const load = async () => {
     setError(null);
@@ -180,9 +254,10 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       <Banner />
 
       <div className="cats">
-        {CATS.map((c) => (
-          <button key={c.value} className={cat === c.value ? 'active' : ''} onClick={() => setCat(c.value)}>
-            {c.label}
+        <button key="all" className={cat === 'all' ? 'active' : ''} onClick={() => setCat('all')}>{t('market.all')}</button>
+        {ALL_CATEGORIES.map((c) => (
+          <button key={c} className={cat === c ? 'active' : ''} onClick={() => setCat(c)}>
+            {t(`market.${c}` as never)}
           </button>
         ))}
       </div>
@@ -198,7 +273,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       ) : (
         <div className="tiles">
           {filtered.map((p) => (
-            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} />
+            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onOpenEscrow={onOpenEscrow} />
           ))}
           {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>

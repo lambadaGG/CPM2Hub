@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex, jsonb } from 'drizzle-orm/pg-core';
 
 export const users = pgTable(
   'users',
@@ -17,7 +17,12 @@ export const users = pgTable(
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
   slug: text('slug').notNull().unique(),
-  category: text('category', { enum: ['gearbox', 'vinyl', 'tune', 'nick'] }).notNull(),
+  category: text('category', {
+    enum: [
+      'gearbox', 'vinyl', 'tune', 'nick', 'bodykit', 'wheels', 'engine',
+      'suspension', 'plates', 'exhaust', 'neon', 'garage', 'account',
+    ],
+  }).notNull(),
   title: text('title').notNull(),
   subtitle: text('subtitle').notNull(),
   priceStars: integer('price_stars').notNull(),
@@ -28,6 +33,17 @@ export const products = pgTable('products', {
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
   sellerId: integer('seller_id').references(() => users.id),
+  mediaType: text('media_type'),
+  previewUrl: text('preview_url'),
+  videoUrl: text('video_url'),
+  audioUrl: text('audio_url'),
+  beforeUrl: text('before_url'),
+  afterUrl: text('after_url'),
+  serverName: text('server_name'),
+  params: jsonb('params').$type<Record<string, unknown>>(),
+  moderationStatus: text('moderation_status', { enum: ['pending', 'approved', 'rejected'] })
+    .notNull()
+    .default('approved'),
 });
 
 export const purchases = pgTable(

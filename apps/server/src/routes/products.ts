@@ -4,55 +4,18 @@ import { randomBytes } from 'node:crypto';
 import { db } from '../db/index';
 import { products, purchases, users } from '../db/schema';
 import { getUser } from './auth';
-import type { Category, SellCategory } from '@gm/shared';
+import {
+  CATEGORY_META,
+  computeModeration,
+  mediaTypeFor,
+  validateListing,
+  validatePatch,
+} from '../lib/market';
+import type { Category, MediaType, ModerationStatus, Product } from '@gm/shared';
+
+export { validateListing, validatePatch } from '../lib/market';
 
 export const productsRoute = new Hono();
-
-const CATEGORIES: Category[] = ['gearbox', 'vinyl', 'tune', 'nick'];
-const SELL_CATEGORIES: SellCategory[] = ['gearbox', 'vinyl', 'tune'];
-const SELL_GLYPH: Record<SellCategory, string> = { gearbox: 'gear', vinyl: 'disc', tune: 'gauge' };
-const MIN_PRICE = 1;
-const MAX_PRICE = 1000;
-
-export function validateListing(input: Record<string, unknown>): { error?: string; value?: { category: SellCategory; title: string; subtitle: string; priceStars: number; configCode: string } } {
-  const category = input.category as SellCategory;
-  if (!SELL_CATEGORIES.includes(category)) return { error: 'bad_category' };
-
-  const title = typeof input.title === 'string' ? input.title.trim() : '';
-  if (title.length < 3 || title.length > 40) return { error: 'bad_title' };
-
-  const subtitle = typeof input.subtitle === 'string' ? input.subtitle.trim() : '';
-  if (subtitle.length > 80) return { error: 'bad_subtitle' };
-
-  const priceStars = Number(input.priceStars);
-  if (!Number.isInteger(priceStars) || priceStars < MIN_PRICE || priceStars > MAX_PRICE) return { error: 'bad_price' };
-
-  const configCode = typeof input.configCode === 'string' ? input.configCode.trim() : '';
-  if (configCode.length === 0 || configCode.length > 300) return { error: 'bad_code' };
-
-  return { value: { category, title, subtitle, priceStars, configCode } };
-}
-
-export function validatePatch(input: Record<string, unknown>): { error?: string } {
-  if (input.title !== undefined) {
-    const title = typeof input.title === 'string' ? input.title.trim() : '';
-    if (title.length < 3 || title.length > 40) return { error: 'bad_title' };
-  }
-  if (input.subtitle !== undefined) {
-    const subtitle = typeof input.subtitle === 'string' ? input.subtitle.trim() : '';
-    if (subtitle.length > 80) return { error: 'bad_subtitle' };
-  }
-  if (input.priceStars !== undefined) {
-    const priceStars = Number(input.priceStars);
-    if (!Number.isInteger(priceStars) || priceStars < MIN_PRICE || priceStars > MAX_PRICE) return { error: 'bad_price' };
-  }
-  if (input.configCode !== undefined) {
-    const configCode = typeof input.configCode === 'string' ? input.configCode.trim() : '';
-    if (configCode.length === 0 || configCode.length > 300) return { error: 'bad_code' };
-  }
-  if (input.active !== undefined && typeof input.active !== 'boolean') return { error: 'bad_active' };
-  return {};
-}
 
 function makeSlug(userId: number): string {
   return `u${userId}-${randomBytes(4).toString('hex')}`;
@@ -73,36 +36,48 @@ async function attachSellers<R extends { sellerId: number | null }>(rows: R[]): 
   }));
 }
 
-async function toDto(row: typeof products.$inferSelect) {
-  const [full] = await attachSellers([row]);
+function toDto(row: (typeof products.$inferSelect) & { seller?: { id: number; username: string | null; firstName: string } | null }): Product {
+  const mediaType = (row.mediaType ?? CATEGORY_META[row.category as Category]?.mediaType ?? 'photo') as MediaType;
   return {
-    id: full.id,
-    slug: full.slug,
-    category: full.category as Category,
-    title: full.title,
-    subtitle: full.subtitle,
-    priceStars: full.priceStars,
-    downloads: full.downloads,
-    verified: full.verified,
-    glyph: full.glyph,
-    configCode: full.configCode,
-    active: full.active,
-    sortOrder: full.sortOrder,
-    sellerId: full.sellerId,
-    seller: full.seller,
+    id: row.id,
+    slug: row.slug,
+    category: row.category as Category,
+    title: row.title,
+    subtitle: row.subtitle,
+    priceStars: row.priceStars,
+    downloads: row.downloads,
+    verified: row.verified,
+    glyph: row.glyph,
+    configCode: row.configCode,
+    active: row.active,
+    sortOrder: row.sortOrder,
+    sellerId: row.sellerId,
+    seller: row.seller ?? null,
+    media: {
+      type: mediaType,
+      previewUrl: row.previewUrl,
+      videoUrl: row.videoUrl,
+      audioUrl: row.audioUrl,
+      beforeUrl: row.beforeUrl,
+      afterUrl: row.afterUrl,
+    },
+    serverName: row.serverName,
+    params: (row.params as Product['params']) ?? {},
+    moderationStatus: (row.moderationStatus ?? 'approved') as ModerationStatus,
   };
 }
 
 productsRoute.get('/products', async (c) => {
   const category = c.req.query('category');
+  const base = and(eq(products.active, true), eq(products.moderationStatus, 'approved'));
   const rows = category
-    ? await db.select().from(products).where(and(eq(products.active, true), eq(products.category, category as Category)))
-    : await db.select().from(products).where(eq(products.active, true));
+    ? await db.select().from(products).where(and(base, eq(products.category, category as Category)))
+    : await db.select().from(products).where(base);
 
   const admins = rows.filter((r) => r.sellerId == null).sort((a, b) => a.sortOrder - b.sortOrder);
   const users_ = rows.filter((r) => r.sellerId != null).sort((a, b) => b.id - a.id);
   const out = await attachSellers([...admins, ...users_]);
-  return c.json(await Promise.all(out.map(toDto)));
+  return c.json(out.map(toDto));
 });
 
 productsRoute.get('/products/mine', async (c) => {
@@ -113,7 +88,7 @@ productsRoute.get('/products/mine', async (c) => {
     .where(eq(products.sellerId, u.id))
     .orderBy(desc(products.id));
   const out = await attachSellers(rows);
-  return c.json(await Promise.all(out.map(toDto)));
+  return c.json(out.map(toDto));
 });
 
 productsRoute.post('/products', async (c) => {
@@ -125,6 +100,9 @@ productsRoute.post('/products', async (c) => {
   if (check.error) return c.json({ error: check.error }, 400);
   const v = check.value!;
 
+  const moderation: ModerationStatus = computeModeration(v.category, v.params);
+  if (moderation === 'rejected') return c.json({ error: 'profanity' }, 400);
+
   const [created] = await db
     .insert(products)
     .values({
@@ -135,14 +113,24 @@ productsRoute.post('/products', async (c) => {
       priceStars: v.priceStars,
       configCode: v.configCode,
       verified: false,
-      glyph: SELL_GLYPH[v.category],
+      glyph: CATEGORY_META[v.category].glyph,
       active: true,
       sortOrder: 999,
       sellerId: u.id,
+      mediaType: mediaTypeFor(v.category),
+      previewUrl: typeof v.media.previewUrl === 'string' ? v.media.previewUrl : null,
+      videoUrl: typeof v.media.videoUrl === 'string' ? v.media.videoUrl : null,
+      audioUrl: typeof v.media.audioUrl === 'string' ? v.media.audioUrl : null,
+      beforeUrl: typeof v.media.beforeUrl === 'string' ? v.media.beforeUrl : null,
+      afterUrl: typeof v.media.afterUrl === 'string' ? v.media.afterUrl : null,
+      serverName: v.serverName || null,
+      params: v.params,
+      moderationStatus: moderation,
     })
     .returning();
 
-  return c.json(await toDto(created), 201);
+  const [out] = await attachSellers([created]);
+  return c.json(toDto(out), 201);
 });
 
 async function getOwned(id: number, userId: number) {
@@ -162,15 +150,44 @@ productsRoute.patch('/products/:id', async (c) => {
 
   const check = validatePatch(body);
   if (check.error) return c.json({ error: check.error }, 400);
+  const cat = check.category ?? (row.category as Category);
 
   const next: Record<string, unknown> = {};
   for (const key of ['title', 'subtitle', 'priceStars', 'configCode', 'active'] as const) {
     if (body[key] !== undefined) next[key] = key === 'title' || key === 'subtitle' || key === 'configCode' ? String(body[key]).trim() : body[key];
   }
+
+  const media = body.media as Record<string, unknown> | undefined;
+  let contentChanged = false;
+  if (media) {
+    for (const key of ['previewUrl', 'videoUrl', 'audioUrl', 'beforeUrl', 'afterUrl'] as const) {
+      if (media[key] !== undefined) {
+        next[key] = typeof media[key] === 'string' && media[key].trim() !== '' ? media[key].trim() : null;
+        contentChanged = true;
+      }
+    }
+  }
+  if (body.serverName !== undefined) {
+    next.serverName = typeof body.serverName === 'string' && body.serverName.trim() !== '' ? body.serverName.trim() : null;
+    contentChanged = true;
+  }
+  if (body.params !== undefined) {
+    next.params = body.params;
+    contentChanged = true;
+  }
+
   if (Object.keys(next).length === 0) return c.json({ error: 'nothing_to_update' }, 400);
 
+  if (contentChanged && CATEGORY_META[cat].requiresModeration) {
+    const params = (body.params as Record<string, unknown>) ?? {};
+    const moderation = computeModeration(cat, params as never);
+    if (moderation === 'rejected') return c.json({ error: 'profanity' }, 400);
+    next.moderationStatus = moderation;
+  }
+
   const [updated] = await db.update(products).set(next).where(eq(products.id, id)).returning();
-  return c.json(await toDto(updated));
+  const [out] = await attachSellers([updated]);
+  return c.json(toDto(out));
 });
 
 productsRoute.delete('/products/:id', async (c) => {
@@ -189,7 +206,7 @@ productsRoute.post('/products/:id/pay', async (c) => {
   if (!Number.isInteger(id)) return c.json({ error: 'bad_id' }, 400);
 
   const [prod] = await db.select().from(products).where(eq(products.id, id));
-  if (!prod || !prod.active) return c.json({ error: 'not_found' }, 404);
+  if (!prod || !prod.active || prod.moderationStatus !== 'approved') return c.json({ error: 'not_found' }, 404);
   if (prod.sellerId == null) return c.json({ error: 'invoice_only' }, 400);
   if (prod.sellerId === u.id) return c.json({ error: 'self_pay' }, 400);
 
@@ -234,4 +251,4 @@ productsRoute.post('/products/:id/pay', async (c) => {
   }
 });
 
-export { toDto as productToDto, CATEGORIES };
+export { CATEGORY_META, toDto as productToDto };

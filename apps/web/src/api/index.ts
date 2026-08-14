@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { BuyRequest, BuyResponse, Category, CreateProductRequest, MeResponse, PatchProductRequest, PayResponse, Product, Purchase, Trade } from '@gm/shared';
+import type { BuyRequest, BuyResponse, Category, CreateProductRequest, MeResponse, ModerationStatus, Params, PatchProductRequest, PayResponse, Product, ProductMedia, Purchase, Trade } from '@gm/shared';
 
 export { api } from './client';
 export type {
@@ -8,9 +8,12 @@ export type {
   Category,
   CreateProductRequest,
   MeResponse,
+  ModerationStatus,
+  Params,
   PatchProductRequest,
   PayResponse,
   Product,
+  ProductMedia,
   Purchase,
   SellCategory,
   SellerInfo,
@@ -18,6 +21,7 @@ export type {
   TradeStatus,
   User,
 } from '@gm/shared';
+export { ALL_CATEGORIES, CATEGORY_META, PARAM_FIELDS, RISK_BY_CATEGORY, SELL_CATEGORIES } from '@gm/shared';
 
 export const getMe = () => api<MeResponse>('/me');
 export const getProducts = (category?: Category) =>

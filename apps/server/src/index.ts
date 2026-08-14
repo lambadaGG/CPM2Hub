@@ -7,6 +7,7 @@ import { meRoute } from './routes/me';
 import { productsRoute } from './routes/products';
 import { purchasesRoute } from './routes/purchases';
 import { tradesRoute } from './routes/trades';
+import { adminRoute } from './routes/admin';
 import { getBot, setupWebhook } from './bot';
 
 const app = new Hono();
@@ -26,6 +27,7 @@ app.route('/api', meRoute);
 app.route('/api', productsRoute);
 app.route('/api', purchasesRoute);
 app.route('/api', tradesRoute);
+app.route('/api', adminRoute);
 
 app.get('/health', (c) => c.json({ ok: true }));
 

@@ -18,7 +18,7 @@ test('validateListing accepts a valid user listing', () => {
 });
 
 test('validateListing rejects non-sellable categories', () => {
-  assert.equal(validateListing({ ...GOOD, category: 'nick' }).error, 'bad_category');
+  assert.equal(validateListing({ ...GOOD, category: 'account' }).error, 'bad_category');
   assert.equal(validateListing({ ...GOOD, category: 'paint' }).error, 'bad_category');
   assert.equal(validateListing({ ...GOOD, category: undefined }).error, 'bad_category');
 });
@@ -63,4 +63,70 @@ test('validatePatch rejects invalid per-field values', () => {
   assert.equal(validatePatch({ priceStars: 0 }).error, 'bad_price');
   assert.equal(validatePatch({ configCode: '' }).error, 'bad_code');
   assert.equal(validatePatch({ active: 'yes' }).error, 'bad_active');
+});
+
+test('validateListing accepts all new sellable categories', () => {
+  const base = { title: 'Item', subtitle: '', priceStars: 10, configCode: 'X' };
+  const cases: Array<{ category: string; params?: Record<string, string>; media?: { videoUrl?: string; audioUrl?: string }; serverName?: string }> = [
+    { category: 'gearbox' },
+    { category: 'vinyl' },
+    { category: 'tune' },
+    { category: 'nick' },
+    { category: 'bodykit', params: { model: 'Silvia', kitType: 'Street' } },
+    { category: 'wheels', params: { brand: 'TE37', models: 'S15, GTR' } },
+    { category: 'engine', params: { donorEngine: 'SR20', targetModel: 'Silvia', hp: '250' }, media: { videoUrl: 'https://cdn.example.com/v.mp4' } },
+    { category: 'suspension', params: { style: 'Stance', model: 'Silvia' } },
+    { category: 'plates', params: { plateText: 'A777AA' } },
+    { category: 'exhaust', params: { soundType: 'V8' }, media: { audioUrl: 'https://cdn.example.com/s.mp3' } },
+    { category: 'neon', params: { colorScheme: 'Blue' } },
+    { category: 'garage', serverName: 'CPM2 RP' },
+  ];
+  for (const c of cases) {
+    const r = validateListing({ ...base, category: c.category, params: c.params, media: c.media, serverName: c.serverName });
+    assert.equal(r.error, undefined, `category ${c.category} → ${r.error}`);
+  }
+});
+
+test('engine requires a video url', () => {
+  const engine = { ...GOOD, category: 'engine', params: { donorEngine: 'SR20', targetModel: 'Silvia', hp: '250' } };
+  assert.equal(validateListing(engine).error, 'bad_video');
+  assert.equal(validateListing({ ...engine, media: { videoUrl: 'https://cdn.example.com/v.mp4' } }).error, undefined);
+  assert.equal(validateListing({ ...engine, media: { videoUrl: 'not-a-url' } }).error, 'bad_video');
+});
+
+test('exhaust requires an audio url', () => {
+  const exhaust = { ...GOOD, category: 'exhaust', params: { soundType: 'V8' } };
+  assert.equal(validateListing(exhaust).error, 'bad_audio');
+  assert.equal(validateListing({ ...exhaust, media: { audioUrl: 'https://cdn.example.com/s.mp3' } }).error, undefined);
+});
+
+test('bodykit requires model params', () => {
+  assert.equal(validateListing({ ...GOOD, category: 'bodykit' }).error, 'bad_params');
+  assert.equal(
+    validateListing({ ...GOOD, category: 'bodykit', params: { model: 'Silvia S15', kitType: 'Street' } }).error,
+    undefined,
+  );
+});
+
+test('plates requires plateText and trims params', () => {
+  assert.equal(validateListing({ ...GOOD, category: 'plates' }).error, 'bad_params');
+  const r = validateListing({ ...GOOD, category: 'plates', params: { plateText: 'A777AA' } });
+  assert.equal(r.error, undefined);
+  assert.equal(r.value?.params.plateText, 'A777AA');
+});
+
+test('garage requires a server name', () => {
+  assert.equal(validateListing({ ...GOOD, category: 'garage' }).error, 'bad_server');
+  assert.equal(validateListing({ ...GOOD, category: 'garage', serverName: '  CPM2 RP  ' }).error, undefined);
+});
+
+test('wheels parses list params', () => {
+  const r = validateListing({
+    ...GOOD,
+    category: 'wheels',
+    params: { brand: 'TE37', models: 'S15, GTR', offset: '12' },
+  });
+  assert.equal(r.error, undefined);
+  assert.deepEqual(r.value?.params.models, ['S15', 'GTR']);
+  assert.equal(r.value?.params.offset, 12);
 });

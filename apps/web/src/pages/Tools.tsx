@@ -72,16 +72,25 @@ function ColorPicker() {
   const hex = hslToHex(hsv.h, hsv.s, hsv.t);
   const [r, g, b] = hslToRgb(hsv.h, hsv.s, hsv.t);
 
-  const onWheel = (e: React.PointerEvent<HTMLDivElement>) => {
+  const update = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const pt = pickFromPosition(e.clientX, e.clientY, rect);
     if (pt) setHsv({ ...pt });
   };
 
+  const onWheelDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    update(e);
+  };
+
+  const onWheelMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) update(e);
+  };
+
   return (
     <ToolCard icon="i-palette" title={t('tools.color')} sub={t('tools.color.sub')}>
       <div className="cp-wrap">
-        <div className="wheel" style={{ background: `conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)` }} onPointerDown={onWheel}>
+        <div className="wheel" style={{ background: `conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)` }} onPointerDown={onWheelDown} onPointerMove={onWheelMove}>
           <div className="wheel-shade" />
           <div className="wheel-mark" style={{ left: wheelPoint(hsv.h, hsv.s).left, top: wheelPoint(hsv.h, hsv.s).top, borderColor: hex }} />
         </div>

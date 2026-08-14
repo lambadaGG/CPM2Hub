@@ -189,6 +189,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
           <div className="sell-cat-label">{t('sell.category')}: <b>{t(`market.${category}` as never)}</b></div>
         ) : (
           <Segmented<SellCategory>
+            className="seg-scroll"
             options={SELL_CATEGORIES.map((c) => ({ value: c, label: t(`market.${c}` as never) }))}
             value={category}
             onChange={changeCategory}

@@ -560,6 +560,13 @@ body {
   background: #dbdcde;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
+.seg-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.seg-scroll::-webkit-scrollbar { display: none; }
+.seg-scroll button { flex: none; white-space: nowrap; }
 
 /* ---------- Fields ---------- */
 .text-input {
@@ -1075,7 +1082,8 @@ body {
   min-height: 84px;
 }
 .text-area:focus { outline: none; border-color: var(--accent); }
-.sell-form-actions { display: flex; gap: 10px; }
+.sell-form-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.sell-form-actions .primary-btn { flex: 1; min-width: 140px; }
 
 .sell-entry {
   flex: none;

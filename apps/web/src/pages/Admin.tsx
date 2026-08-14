@@ -75,16 +75,25 @@ function Moderation({ items, onDone }: { items: Product[]; onDone: () => void })
 function Refunds({ items, onRefunded }: { items: AdminPurchase[]; onRefunded: () => void }) {
   const { t } = useI18n();
   const toast = useToast();
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const refund = async (id: number) => {
+    if (busy) return;
+    setBusy(true);
     try {
       await adminRefund(id);
       toast(t('admin.refunded'));
       onRefunded();
     } catch (e) {
       toast(e instanceof Error ? e.message : t('admin.refundErr'));
+    } finally {
+      setBusy(false);
+      setConfirmId(null);
     }
   };
+
+  const target = items.find((p) => p.id === confirmId) ?? null;
 
   return (
     <div className="card">
@@ -102,12 +111,32 @@ function Refunds({ items, onRefunded }: { items: AdminPurchase[]; onRefunded: ()
                 </span>
               </div>
               {p.status === 'paid' && !p.refunded ? (
-                <button className="mini-btn bad" onClick={() => refund(p.id)}>{t('admin.refund')}</button>
+                <button className="mini-btn bad" disabled={busy} onClick={() => setConfirmId(p.id)}>{t('admin.refund')}</button>
               ) : (
                 <span className="mini-tag">{p.refunded ? t('admin.refunded') : p.status}</span>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {target && (
+        <div className="modal" onClick={() => !busy && setConfirmId(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{t('admin.refundConfirmTitle')}</h3>
+              <button className="modal-close" disabled={busy} onClick={() => setConfirmId(null)}>×</button>
+            </div>
+            <p className="modal-text">{t('admin.refundConfirmText')}</p>
+            <div className="r-mid" style={{ marginBottom: 12 }}>
+              <span className="r-title">{target.productTitle}</span>
+              <span className="r-sub">{target.amountStars} ⭐ · {target.buyer.username ? `@${target.buyer.username}` : target.buyer.firstName}</span>
+            </div>
+            <div className="modal-acts">
+              <button className="mini-btn" disabled={busy} onClick={() => setConfirmId(null)}>{t('admin.refundCancel')}</button>
+              <button className="mini-btn bad" disabled={busy} onClick={() => refund(target.id)}>{busy ? '…' : t('admin.refund')}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

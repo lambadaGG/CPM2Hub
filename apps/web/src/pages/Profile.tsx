@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { openInvoice, openTelegramLink } from '@telegram-apps/sdk';
 import { getDownloads, getMe, getTrades, topupStars } from '../api';
 import type { Purchase, Trade, User } from '../api';
+import { ConfigModal } from '../components/ConfigModal';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useI18n, type Lang } from '../i18n';
-import { fmtCompact, fmtDateTime } from '../utils';
+import { downloadText, fmtCompact, fmtDateTime } from '../utils';
 
 const TRADE_KIND: Record<Trade['kind'], string> = {
   money: 'escrow.kind.money',
@@ -134,18 +135,23 @@ function HistoryLog({ downloads, trades }: { downloads: Purchase[]; trades: Trad
 
 const LANG_LABEL: Record<Lang, string> = { ru: 'Русский', en: 'English' };
 
-export function Profile({ user: initial }: { user: User | null }) {
+export function Profile({ user: initial, active }: { user: User | null; active?: boolean }) {
   const [me, setMe] = useState<User | null>(initial);
   const [downloads, setDownloads] = useState<Purchase[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [openItem, setOpenItem] = useState<Purchase | null>(null);
   const toast = useToast();
   const { t, lang, setLang } = useI18n();
 
-  useEffect(() => {
+  const load = () => {
     getMe().then((r) => setMe(r.user)).catch(() => {});
     getDownloads().then(setDownloads).catch(() => {});
     getTrades().then(setTrades).catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => {
+    if (active !== false) load();
+  }, [active]);
 
   const u = me ?? initial;
 
@@ -187,10 +193,24 @@ export function Profile({ user: initial }: { user: User | null }) {
                 <span className="r-title">{p.product?.title ?? 'Item'}</span>
                 <span className="r-sub">{fmtDateTime(p.createdAt)}</span>
               </div>
+              {p.product?.configCode && (
+                <div className="dl-acts">
+                  <button className="mini-btn" onClick={() => setOpenItem(p)}>
+                    <Icon id="i-eye" className="icon" />{t('profile.downloadOpen')}
+                  </button>
+                  <button className="mini-btn" onClick={() => { downloadText(`${p.product!.title}.txt`, p.product!.configCode); toast(t('market.downloaded')); }}>
+                    <Icon id="i-dl" className="icon" />{t('profile.downloadSave')}
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}
       </div>
+
+      {openItem?.product?.configCode && (
+        <ConfigModal title={openItem.product.title} code={openItem.product.configCode} onClose={() => setOpenItem(null)} />
+      )}
 
       <HistoryLog downloads={downloads} trades={trades} />
 

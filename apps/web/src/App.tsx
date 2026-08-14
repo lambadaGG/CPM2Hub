@@ -62,7 +62,7 @@ export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
             <div className="page" hidden={tab !== 'tools'}><Tools /></div>
             <div className="page" hidden={tab !== 'escrow'}><Escrow /></div>
             <div className="page" hidden={tab !== 'sell'}><Sell onBack={() => setTab('market')} /></div>
-            <div className="page" hidden={tab !== 'profile'}><Profile user={user} /></div>
+            <div className="page" hidden={tab !== 'profile'}><Profile user={user} active={tab === 'profile'} /></div>
             {isAdmin && <div className="page" hidden={tab !== 'admin'}><Admin /></div>}
           </main>
           <TabBar active={tab} onChange={setTab} admin={isAdmin} />

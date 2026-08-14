@@ -4,6 +4,7 @@ import { getMe, getProducts, payProduct } from '../api';
 import { ALL_CATEGORIES, CATEGORY_META } from '../api';
 import type { Category, PayResponse, Product, User } from '../api';
 import { Banner } from '../components/Banner';
+import { ConfigModal } from '../components/ConfigModal';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { useI18n } from '../i18n';
@@ -228,20 +229,21 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
   };
 
   useEffect(() => {
-    if (active) load();
+    if (!active) return;
+    load();
+    const id = setInterval(() => {
+      getMe().then((me) => {
+        if (me) {
+          setBalance(me.user.creditsStars);
+          setTn(me.user.creditsTn);
+        }
+      }).catch(() => {});
+      getProducts().then(setProducts).catch(() => {});
+    }, 30000);
+    return () => clearInterval(id);
   }, [active]);
 
   const filtered = cat === 'all' ? products : products.filter((p) => p.category === cat);
-
-  const copyCode = async () => {
-    if (!payRes) return;
-    try {
-      await navigator.clipboard.writeText(payRes.configCode);
-      toast(t('market.copied'));
-    } catch {
-      toast(t('market.copy'));
-    }
-  };
 
   return (
     <div className="screen market">
@@ -305,19 +307,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       </div>
 
       {payRes && (
-        <div className="modal" onClick={() => setPayRes(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>{t('market.paid')}</h3>
-              <button className="modal-close" onClick={() => setPayRes(null)}>×</button>
-            </div>
-            <div className="modal-code"><pre>{payRes.configCode}</pre></div>
-            <button className="primary-btn" onClick={copyCode}>
-              <Icon id="i-copy" className="icon" />
-              {t('market.copy')}
-            </button>
-          </div>
-        </div>
+        <ConfigModal title={payRes.productTitle} code={payRes.configCode} onClose={() => setPayRes(null)} />
       )}
     </div>
   );

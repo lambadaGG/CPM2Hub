@@ -165,7 +165,8 @@ export async function reconcileStars(): Promise<number> {
  * Refund a paid purchase. For charge-based payments refunds the Telegram Stars
  * via the official Bot API and reverses the internal ledger (seller credit,
  * downloads). For balance-based payments reverses the transfer by crediting the
- * buyer back. Idempotent — refunded purchases are skipped.
+ * buyer back. Idempotent and spam-safe: the purchase is claimed atomically, so
+ * concurrent/rapid retries resolve to a single refund.
  */
 export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean; error?: string }> {
   const [purchase] = await db.select().from(purchases).where(eq(purchases.id, purchaseId));
@@ -173,18 +174,17 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
 
   const [product] = await db.select().from(products).where(eq(products.id, purchase.productId));
 
-  if (purchase.chargeId) {
-    const [buyer] = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, purchase.userId));
-    if (!buyer) return { ok: false, error: 'no_buyer' };
-    try {
-      await refundStarPayment(buyer.telegramId, purchase.chargeId);
-    } catch (err) {
-      return { ok: false, error: `refund_failed: ${err instanceof Error ? err.message : String(err)}` };
-    }
-  }
+  // Atomic claim: exactly one caller wins the guard, so a spammed "refund"
+  // button can never refund twice. Losers immediately bail out.
+  const [claim] = await db
+    .update(purchases)
+    .set({ refunded: true })
+    .where(and(eq(purchases.id, purchaseId), eq(purchases.status, 'paid'), eq(purchases.refunded, false)))
+    .returning({ id: purchases.id });
+  if (!claim) return { ok: false, error: 'not_refundable' };
 
+  // Revert the internal ledger first (still under the claim).
   await db.transaction(async (tx) => {
-    await tx.update(purchases).set({ refunded: true }).where(eq(purchases.id, purchaseId));
     if (product?.sellerId != null) {
       await tx
         .update(users)
@@ -201,6 +201,36 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
       await tx.update(products).set({ downloads: Math.max(0, product.downloads - 1) }).where(eq(products.id, product.id));
     }
   });
+
+  // External Telegram refund last, so the network call happens at most once per claim.
+  try {
+    if (purchase.chargeId) {
+      const [buyer] = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, purchase.userId));
+      if (!buyer) throw new Error('no_buyer');
+      await refundStarPayment(buyer.telegramId, purchase.chargeId);
+    }
+  } catch (err) {
+    // Compensate the ledger and release the claim so the admin can retry cleanly.
+    await db.transaction(async (tx) => {
+      if (product?.sellerId != null) {
+        await tx
+          .update(users)
+          .set({ creditsStars: sql`${users.creditsStars} + ${purchase.amountStars}` })
+          .where(eq(users.id, product.sellerId));
+      }
+      if (!purchase.chargeId) {
+        await tx
+          .update(users)
+          .set({ creditsStars: sql`${users.creditsStars} - ${purchase.amountStars}` })
+          .where(eq(users.id, purchase.userId));
+      }
+      if (product) {
+        await tx.update(products).set({ downloads: product.downloads }).where(eq(products.id, product.id));
+      }
+      await tx.update(purchases).set({ refunded: false }).where(eq(purchases.id, purchaseId));
+    });
+    return { ok: false, error: `refund_failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
 
   const [buyer] = await db.select().from(users).where(eq(users.id, purchase.userId));
   if (buyer) {

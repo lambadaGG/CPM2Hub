@@ -644,6 +644,8 @@ body {
 .r-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .r-title { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .r-sub { font-size: 10px; color: var(--faint); }
+.dl-acts { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.dl-acts .mini-btn { justify-content: center; }
 .pill {
   flex: none;
   font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
@@ -1154,6 +1156,9 @@ body {
   word-break: break-all;
   user-select: text;
 }
+.modal-acts { display: flex; gap: 8px; }
+.modal-acts .primary-btn { flex: 1; }
+.modal-text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--sub); }
 
 .sell-list { display: flex; flex-direction: column; gap: 10px; }
 .sell-item {

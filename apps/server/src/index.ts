@@ -9,6 +9,7 @@ import { purchasesRoute } from './routes/purchases';
 import { tradesRoute } from './routes/trades';
 import { adminRoute } from './routes/admin';
 import { getBot, setupWebhook } from './bot';
+import { reconcileStars } from './lib/stars';
 
 const app = new Hono();
 
@@ -63,6 +64,17 @@ async function main() {
   serve({ fetch: app.fetch, port }, (info) => {
     console.log(`[api] listening on http://localhost:${info.port}`);
   });
+
+  if (bot) {
+    setInterval(() => {
+      reconcileStars()
+        .then((n) => {
+          if (n > 0) console.log(`[stars] reconciled ${n} payment(s)`);
+        })
+        .catch((err) => console.error('[stars] reconcile failed', err));
+    }, 60_000);
+    console.log('[stars] reconcile loop started (60s)');
+  }
 }
 
 main().catch((err) => {

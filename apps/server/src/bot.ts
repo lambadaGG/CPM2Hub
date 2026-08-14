@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from './db/index';
 import { products, purchases, topups, users } from './db/schema';
 import { parseBuyPayload, parseTopupPayload } from './lib/payments';
+import { applyPurchase, applyTopup } from './lib/stars';
 import { actTrade, buildTradeMessage, type TradeAction } from './lib/escrow';
 
 let bot: Bot | null = null;
@@ -87,6 +88,12 @@ function registerHandlers(b: Bot) {
   b.on('message:successful_payment', async (ctx) => {
     const payment = ctx.message.successful_payment;
     const payload = payment.invoice_payload;
+    const payer = ctx.from;
+
+    const tid = async (userId: number) => {
+      const [u] = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, userId));
+      return u?.telegramId ?? null;
+    };
 
     const topup = parseTopupPayload(payload);
     if (topup) {
@@ -95,22 +102,10 @@ function registerHandlers(b: Bot) {
         .from(topups)
         .where(eq(topups.payload, payload));
       if (!existing || existing.status === 'paid') return;
-
-      const payer = ctx.from;
-      if (payer?.id !== existing.userId) return;
+      if (payer?.id !== (await tid(existing.userId))) return;
       if (payment.total_amount !== existing.amountStars) return;
 
-      await db.update(topups)
-        .set({ status: 'paid', chargeId: payment.telegram_payment_charge_id })
-        .where(eq(topups.id, existing.id));
-
-      const [user] = await db.select().from(users).where(eq(users.id, existing.userId));
-      const current = user?.creditsStars ?? 0;
-      await db.update(users)
-        .set({ creditsStars: current + existing.amountStars })
-        .where(eq(users.id, existing.userId));
-
-      await ctx.reply(`⭐ +${existing.amountStars} Stars added to your balance.`);
+      await applyTopup(existing.id, payment.telegram_payment_charge_id);
       return;
     }
 
@@ -123,50 +118,12 @@ function registerHandlers(b: Bot) {
       .where(eq(purchases.payload, payload));
     if (!existing || existing.status === 'paid') return;
 
-    // Verify payer identity: Telegram user who paid must match the purchase creator
-    const payer = ctx.from;
-    if (payer?.id !== existing.userId) return;
+    if (payer?.id !== (await tid(existing.userId))) return;
 
-    // Verify amount matches product price
     const [product] = await db.select().from(products).where(eq(products.id, existing.productId));
     if (!product || payment.total_amount !== product.priceStars) return;
 
-    await db.update(purchases)
-      .set({ status: 'paid', chargeId: payment.telegram_payment_charge_id, amountStars: payment.total_amount })
-      .where(eq(purchases.id, existing.id));
-
-    if (product) {
-      await db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id));
-    }
-
-    if (product.sellerId != null) {
-      const [seller] = await db.select().from(users).where(eq(users.id, product.sellerId));
-      if (seller) {
-        await db.update(users)
-          .set({ creditsStars: seller.creditsStars + payment.total_amount })
-          .where(eq(users.id, seller.id));
-        await ctx.api.sendMessage(
-          seller.telegramId,
-          `🎉 Your config **${product.title}** was sold for **${payment.total_amount} ⭐**!\n\nBalance credited: +${payment.total_amount} ⭐`,
-          { parse_mode: 'Markdown' },
-        );
-      }
-    }
-
-    const [user] = await db.select().from(users).where(eq(users.id, existing.userId));
-    const greet = user ? `@${user.username ?? user.firstName}` : 'there';
-
-    await ctx.reply(
-      [
-        `✅ Config purchased: **${product?.title ?? 'item'}**`,
-        ``,
-        `Hey ${greet}, your config code:`,
-        `\`\`\`txt`,
-        product?.configCode ?? 'N/A',
-        `\`\`\``,
-        `Saved in Profile → My Downloads.`,
-      ].join('\n'),
-    );
+    await applyPurchase(existing.id, payment.telegram_payment_charge_id, payment.total_amount);
   });
 
   b.on('callback_query:data', async (ctx) => {

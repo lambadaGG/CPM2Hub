@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
-import { products } from '../db/schema';
+import { products, purchases, topups } from '../db/schema';
 import { getUser } from './auth';
+import { fetchStarTransactions } from '../lib/stars';
 import type { ModerationStatus } from '@gm/shared';
 
 export const adminRoute = new Hono();
@@ -11,6 +12,53 @@ function isAdmin(telegramId: number): boolean {
   const list = process.env.ADMIN_IDS ?? '';
   return list.split(',').map((s) => s.trim()).filter(Boolean).includes(String(telegramId));
 }
+
+adminRoute.get('/admin/stars', async (c) => {
+  const u = getUser(c);
+  if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
+
+  const { balance, transactions } = await fetchStarTransactions({ limit: 100 });
+
+  const [{ salesTotal }] = await db
+    .select({ salesTotal: sql<number>`coalesce(sum(${purchases.amountStars}), 0)::int` })
+    .from(purchases)
+    .where(eq(purchases.status, 'paid'));
+  const [{ pendingBuys }] = await db
+    .select({ pendingBuys: sql<number>`count(*)::int` })
+    .from(purchases)
+    .where(eq(purchases.status, 'pending'));
+  const [{ pendingTopups }] = await db
+    .select({ pendingTopups: sql<number>`count(*)::int` })
+    .from(topups)
+    .where(eq(topups.status, 'pending'));
+  const [{ liveProducts }] = await db
+    .select({ liveProducts: sql<number>`count(*)::int` })
+    .from(products)
+    .where(eq(products.active, true));
+
+  const revenue = transactions.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+
+  return c.json({
+    bot: {
+      balance,
+      revenue,
+    },
+    platform: {
+      totalSalesStars: salesTotal,
+      pendingBuys,
+      pendingTopups,
+      liveProducts,
+    },
+    recent: transactions.slice(0, 20).map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      date: t.date,
+      kind: t.amount > 0 ? 'income' : 'expense',
+      refund: t.refund?.type === 'success',
+      payload: t.bot_payload ?? null,
+    })),
+  });
+});
 
 adminRoute.post('/admin/products/:id/moderate', async (c) => {
   const u = getUser(c);

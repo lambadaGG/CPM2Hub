@@ -10,7 +10,7 @@ import { actTrade, buildTradeMessage, type TradeAction } from './lib/escrow';
 let bot: Bot | null = null;
 
 // Secret token for webhook verification — задать в env WEBHOOK_SECRET
-export const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
+export const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET ?? '').trim();
 
 const SUPPORT_LINK = 'https://t.me/CPM2Hub_Support';
 const ANNOUNCEMENTS_LINK = 'https://t.me/CPM2Hub_Announcements';

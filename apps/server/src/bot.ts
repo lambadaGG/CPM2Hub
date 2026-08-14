@@ -139,6 +139,20 @@ function registerHandlers(b: Bot) {
       await db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id));
     }
 
+    if (product.sellerId != null) {
+      const [seller] = await db.select().from(users).where(eq(users.id, product.sellerId));
+      if (seller) {
+        await db.update(users)
+          .set({ creditsStars: seller.creditsStars + payment.total_amount })
+          .where(eq(users.id, seller.id));
+        await ctx.api.sendMessage(
+          seller.telegramId,
+          `🎉 Your config **${product.title}** was sold for **${payment.total_amount} ⭐**!\n\nBalance credited: +${payment.total_amount} ⭐`,
+          { parse_mode: 'Markdown' },
+        );
+      }
+    }
+
     const [user] = await db.select().from(users).where(eq(users.id, existing.userId));
     const greet = user ? `@${user.username ?? user.firstName}` : 'there';
 

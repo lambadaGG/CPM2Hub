@@ -8,6 +8,7 @@ import { I18nProvider } from './i18n';
 import { Market } from './pages/Market';
 import { Tools } from './pages/Tools';
 import { Escrow } from './pages/Escrow';
+import { Sell } from './pages/Sell';
 import { Profile } from './pages/Profile';
 
 function getUser(): User | null {
@@ -49,9 +50,10 @@ export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
         <IconSprite />
         <div className="app">
           <main className="pages">
-            <div className="page" hidden={tab !== 'market'}><Market user={user} onOpenEscrow={() => setTab('escrow')} /></div>
+            <div className="page" hidden={tab !== 'market'}><Market user={user} onOpenEscrow={() => setTab('escrow')} onOpenSell={() => setTab('sell')} /></div>
             <div className="page" hidden={tab !== 'tools'}><Tools /></div>
             <div className="page" hidden={tab !== 'escrow'}><Escrow /></div>
+            <div className="page" hidden={tab !== 'sell'}><Sell onBack={() => setTab('market')} /></div>
             <div className="page" hidden={tab !== 'profile'}><Profile user={user} /></div>
           </main>
           <TabBar active={tab} onChange={setTab} />

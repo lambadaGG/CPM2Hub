@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { openTelegramLink } from '@telegram-apps/sdk';
-import { getMe, getProducts, buyProduct } from '../api';
-import type { Category, Product, User } from '../api';
+import { getMe, getProducts, buyProduct, payProduct } from '../api';
+import type { Category, PayResponse, Product, User } from '../api';
 import { Banner } from '../components/Banner';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
@@ -18,12 +18,16 @@ const GLYPHS: Record<string, string> = {
   shield: 'i-shieldcheck',
 };
 
-function Tile({ p }: { p: Product }) {
+function Tile({ p, balance, meId, onPaid }: { p: Product; balance: number | null; meId: number | null; onPaid: (res: PayResponse) => void }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const { t } = useI18n();
+  const isUser = p.sellerId != null;
+  const mine = isUser && p.sellerId === meId;
+  const canPay = balance != null && balance >= p.priceStars;
+  const sellerName = p.seller?.username ? `@${p.seller.username}` : p.seller?.firstName ?? null;
 
-  const click = async () => {
+  const buy = async () => {
     if (busy) return;
     setBusy(true);
     try {
@@ -39,6 +43,19 @@ function Tile({ p }: { p: Product }) {
     }
   };
 
+  const pay = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await payProduct(p.id);
+      onPaid(res);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('market.notEnough'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <article className={`tile${busy ? ' busy' : ''}`}>
       <div className="tk">
@@ -47,14 +64,28 @@ function Tile({ p }: { p: Product }) {
       </div>
       <div className="t-meta">
         <span className="t-badge">{p.category.toUpperCase()}</span>
+        {sellerName && <span className="t-seller">{sellerName}</span>}
         <span className="t-purchases">↓ {fmtCompact(p.downloads)}</span>
       </div>
       <h3 className="t-title">{p.title}</h3>
       <p className="t-sub">{p.subtitle}</p>
-      <button className="t-buy" onClick={click} disabled={busy}>
-        <span>{p.priceStars} ⭐</span>
-        <span>{t('market.buy')}</span>
-      </button>
+      {isUser ? (
+        <div className="t-buy-row">
+          <button className={`t-buy pay${!canPay ? ' disabled' : ''}`} onClick={pay} disabled={busy || mine || !canPay} title={mine ? t('market.yours') : ''}>
+            <span>{p.priceStars} ⭐</span>
+            <span>{mine ? t('market.yours') : t('market.pay')}</span>
+          </button>
+          <button className="t-buy" onClick={buy} disabled={busy}>
+            <span>{p.priceStars} ⭐</span>
+            <span>{t('market.buy')}</span>
+          </button>
+        </div>
+      ) : (
+        <button className="t-buy" onClick={buy} disabled={busy}>
+          <span>{p.priceStars} ⭐</span>
+          <span>{t('market.buy')}</span>
+        </button>
+      )}
     </article>
   );
 }
@@ -81,17 +112,20 @@ function EscrowTile({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow?: () => void }) {
+export function Market({ user, onOpenEscrow, onOpenSell }: { user: User | null; onOpenEscrow?: () => void; onOpenSell?: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
+  const [payRes, setPayRes] = useState<PayResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
+  const toast = useToast();
 
   const CATS: Array<{ value: Category | 'all'; label: string }> = [
     { value: 'all', label: t('market.all') },
     { value: 'gearbox', label: t('market.gearbox') },
     { value: 'vinyl', label: t('market.vinyl') },
+    { value: 'tune', label: t('market.tune') },
   ];
 
   const load = async () => {
@@ -111,6 +145,16 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
 
   const filtered = cat === 'all' ? products : products.filter((p) => p.category === cat);
 
+  const copyCode = async () => {
+    if (!payRes) return;
+    try {
+      await navigator.clipboard.writeText(payRes.configCode);
+      toast(t('market.copied'));
+    } catch {
+      toast(t('market.copy'));
+    }
+  };
+
   return (
     <div className="screen market">
       <header className="top">
@@ -124,6 +168,12 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
             <Icon id="i-star" className="icon" />
             <span>{balance != null ? balance : 0}</span>
           </div>
+          {onOpenSell && (
+            <button className="sell-entry" onClick={onOpenSell}>
+              <Icon id="i-upload" className="icon" />
+              <span>{t('sell.entry')}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -148,7 +198,7 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
       ) : (
         <div className="tiles">
           {filtered.map((p) => (
-            <Tile key={p.id} p={p} />
+            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} />
           ))}
           {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>
@@ -160,6 +210,22 @@ export function Market({ user, onOpenEscrow }: { user: User | null; onOpenEscrow
           <span className="m-val">{(products.length || 0).toString().padStart(2, '0')} {t('market.items')}</span>
         </div>
       </div>
+
+      {payRes && (
+        <div className="modal" onClick={() => setPayRes(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{t('market.paid')}</h3>
+              <button className="modal-close" onClick={() => setPayRes(null)}>×</button>
+            </div>
+            <div className="modal-code"><pre>{payRes.configCode}</pre></div>
+            <button className="primary-btn" onClick={copyCode}>
+              <Icon id="i-copy" className="icon" />
+              {t('market.copy')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,6 +27,7 @@ export const products = pgTable('products', {
   configCode: text('config_code').notNull(),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  sellerId: integer('seller_id').references(() => users.id),
 });
 
 export const purchases = pgTable(

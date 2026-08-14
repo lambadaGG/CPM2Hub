@@ -1,5 +1,13 @@
 export type Category = 'gearbox' | 'vinyl' | 'tune' | 'nick';
 
+export type SellCategory = 'gearbox' | 'vinyl' | 'tune';
+
+export interface SellerInfo {
+  id: number;
+  username: string | null;
+  firstName: string;
+}
+
 export interface Product {
   id: number;
   slug: string;
@@ -13,6 +21,30 @@ export interface Product {
   configCode: string;
   active: boolean;
   sortOrder: number;
+  sellerId: number | null;
+  seller?: SellerInfo | null;
+}
+
+export interface CreateProductRequest {
+  category: SellCategory;
+  title: string;
+  subtitle?: string;
+  priceStars: number;
+  configCode: string;
+}
+
+export interface PatchProductRequest {
+  title?: string;
+  subtitle?: string;
+  priceStars?: number;
+  configCode?: string;
+  active?: boolean;
+}
+
+export interface PayResponse {
+  purchaseId: number;
+  productTitle: string;
+  configCode: string;
 }
 
 export interface User {

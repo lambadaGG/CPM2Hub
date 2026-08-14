@@ -1,7 +1,7 @@
 import { Icon } from './Icons';
 import { useI18n } from '../i18n';
 
-export type TabId = 'market' | 'tools' | 'escrow' | 'profile';
+export type TabId = 'market' | 'tools' | 'escrow' | 'profile' | 'sell';
 
 const TABS: Array<{ id: TabId; labelKey: string; icon: string }> = [
   { id: 'market', labelKey: 'tab.market', icon: 'i-market' },

@@ -9,6 +9,7 @@ import { productsRoute } from './routes/products';
 import { purchasesRoute } from './routes/purchases';
 import { tradesRoute } from './routes/trades';
 import { adminRoute } from './routes/admin';
+import { avatarRoute } from './routes/avatar';
 import { getBot, setupWebhook, setBotCommands, WEBHOOK_SECRET } from './bot';
 import { reconcileStars } from './lib/stars';
 
@@ -30,6 +31,8 @@ app.route('/api', productsRoute);
 app.route('/api', purchasesRoute);
 app.route('/api', tradesRoute);
 app.route('/api', adminRoute);
+
+app.route('/', avatarRoute);
 
 app.get('/health', (c) => c.json({ ok: true }));
 

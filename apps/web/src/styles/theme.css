@@ -104,6 +104,10 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.14);
   flex: none;
 }
+img.user-avatar {
+  object-fit: cover;
+  background: #1b1b1b;
+}
 .user-info {
   flex: 1;
   display: flex;
@@ -764,6 +768,10 @@ body {
   background: linear-gradient(135deg, #2a2a2a, #161616);
   border: 2px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+img.ph-avatar {
+  object-fit: cover;
+  background: #1b1b1b;
 }
 .ph-badge {
   position: absolute; bottom: -4px; left: 50%;

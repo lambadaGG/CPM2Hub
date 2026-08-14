@@ -12,6 +12,12 @@ const API_BASE =
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
+const API_ORIGIN = API_BASE === '/api' ? '' : API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+
+export function avatarUrl(telegramId: number): string {
+  return `${API_ORIGIN}/avatar/${telegramId}`;
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

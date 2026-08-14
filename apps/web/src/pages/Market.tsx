@@ -7,6 +7,7 @@ import { Banner } from '../components/Banner';
 import { ConfigModal } from '../components/ConfigModal';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
+import { Avatar } from '../components/Avatar';
 import { useI18n } from '../i18n';
 import { fmtCompact } from '../utils';
 
@@ -252,7 +253,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
     <div className="screen market">
       <header className="top">
         <div className="user-bar">
-          <div className="user-avatar">{user ? (user.firstName || 'U')[0] : 'U'}</div>
+          <Avatar className="user-avatar" telegramId={user?.telegramId} name={user?.firstName} />
           <div className="user-info">
             <span className="user-name">{user ? user.firstName : 'User'}</span>
             <span className="user-id">ID: {user ? String(user.telegramId).slice(0, 8) : '—'}</span>

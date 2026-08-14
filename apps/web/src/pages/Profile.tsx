@@ -5,6 +5,7 @@ import type { Purchase, Trade, User } from '../api';
 import { ConfigModal } from '../components/ConfigModal';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
+import { Avatar } from '../components/Avatar';
 import { useI18n, type Lang } from '../i18n';
 import { downloadText, fmtCompact, fmtDateTime } from '../utils';
 
@@ -165,7 +166,7 @@ export function Profile({ user: initial, active }: { user: User | null; active?:
       </header>
 
       <div className="profile-hero">
-        <div className="ph-avatar">{u ? (u.firstName || 'U')[0] : 'U'}</div>
+        <Avatar className="ph-avatar" telegramId={u?.telegramId} name={u?.firstName} />
         <div className="ph-info">
           <h1>{u ? u.firstName : 'User'}</h1>
           <p>@{u?.username || '—'} · ID {u ? String(u.telegramId).slice(0, 8) : '—'}</p>

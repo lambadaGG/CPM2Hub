@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initDataUser } from '@telegram-apps/sdk';
-import type { User } from './api';
+import { getAdminMe, type User } from './api';
 import { IconSprite } from './components/Icons';
 import { TabBar, type TabId } from './components/TabBar';
 import { ToastProvider } from './components/Toast';
@@ -10,6 +10,7 @@ import { Tools } from './pages/Tools';
 import { Escrow } from './pages/Escrow';
 import { Sell } from './pages/Sell';
 import { Profile } from './pages/Profile';
+import { Admin } from './pages/Admin';
 
 function getUser(): User | null {
   try {
@@ -31,6 +32,12 @@ function getUser(): User | null {
 export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
   const [tab, setTab] = useState<TabId>('market');
   const [user] = useState<User | null>(getUser);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isTelegramApp) return;
+    getAdminMe().then((r) => setIsAdmin(r.isAdmin)).catch(() => {});
+  }, [isTelegramApp]);
 
   if (!isTelegramApp) {
     return (
@@ -55,8 +62,9 @@ export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
             <div className="page" hidden={tab !== 'escrow'}><Escrow /></div>
             <div className="page" hidden={tab !== 'sell'}><Sell onBack={() => setTab('market')} /></div>
             <div className="page" hidden={tab !== 'profile'}><Profile user={user} /></div>
+            {isAdmin && <div className="page" hidden={tab !== 'admin'}><Admin /></div>}
           </main>
-          <TabBar active={tab} onChange={setTab} />
+          <TabBar active={tab} onChange={setTab} admin={isAdmin} />
         </div>
       </I18nProvider>
     </ToastProvider>

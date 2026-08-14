@@ -1177,3 +1177,60 @@ body {
 .sell-btn.danger { color: var(--bad); background: rgba(255, 69, 58, 0.14); border-color: rgba(255, 69, 58, 0.3); }
 .sell-live { color: var(--ok); }
 .sell-hidden { color: var(--faint); }
+
+/* ---------- Admin panel ---------- */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.admin-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+}
+.admin-list { display: flex; flex-direction: column; gap: 10px; }
+.admin-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 11px 12px;
+}
+.admin-item .r-mid { flex: 1; min-width: 0; }
+.admin-acts { display: flex; gap: 6px; flex-shrink: 0; }
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  color: var(--sub);
+  border-radius: 9px;
+  padding: 6px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mini-btn .icon { width: 12px; height: 12px; }
+.mini-btn:active { transform: scale(0.96); }
+.mini-btn.ok { color: var(--ok); border-color: rgba(52, 199, 89, 0.35); background: rgba(52, 199, 89, 0.12); }
+.mini-btn.bad { color: var(--bad); border-color: rgba(255, 69, 58, 0.35); background: rgba(255, 69, 58, 0.12); }
+.mini-tag {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ok);
+  border: 1px solid rgba(52, 199, 89, 0.35);
+  background: rgba(52, 199, 89, 0.1);
+  border-radius: 999px;
+  padding: 4px 9px;
+}

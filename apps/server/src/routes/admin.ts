@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
-import { products, purchases, topups } from '../db/schema';
+import { products, purchases, topups, users } from '../db/schema';
 import { getUser } from './auth';
 import { fetchStarTransactions, refundPurchase } from '../lib/stars';
 import type { ModerationStatus } from '@gm/shared';
@@ -12,6 +12,11 @@ function isAdmin(telegramId: number): boolean {
   const list = process.env.ADMIN_IDS ?? '';
   return list.split(',').map((s) => s.trim()).filter(Boolean).includes(String(telegramId));
 }
+
+adminRoute.get('/admin/me', async (c) => {
+  const u = getUser(c);
+  return c.json({ isAdmin: isAdmin(u.telegramId), telegramId: u.telegramId });
+});
 
 adminRoute.get('/admin/stars', async (c) => {
   const u = getUser(c);
@@ -58,6 +63,39 @@ adminRoute.get('/admin/stars', async (c) => {
       payload: t.bot_payload ?? null,
     })),
   });
+});
+
+adminRoute.get('/admin/purchases', async (c) => {
+  const u = getUser(c);
+  if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
+
+  const raw = Number(c.req.query('limit'));
+  const limit = Number.isInteger(raw) && raw > 0 ? Math.min(raw, 200) : 50;
+
+  const rows = await db
+    .select({ purchase: purchases, product: products, buyer: users })
+    .from(purchases)
+    .innerJoin(products, eq(purchases.productId, products.id))
+    .innerJoin(users, eq(purchases.userId, users.id))
+    .orderBy(desc(purchases.createdAt))
+    .limit(limit);
+
+  return c.json(
+    rows.map((r) => ({
+      id: r.purchase.id,
+      amountStars: r.purchase.amountStars,
+      status: r.purchase.status,
+      refunded: r.purchase.refunded,
+      chargeId: r.purchase.chargeId,
+      createdAt: r.purchase.createdAt,
+      productTitle: r.product.title,
+      buyer: {
+        username: r.buyer.username,
+        firstName: r.buyer.firstName,
+        telegramId: r.buyer.telegramId,
+      },
+    })),
+  );
 });
 
 adminRoute.post('/admin/refund', async (c) => {

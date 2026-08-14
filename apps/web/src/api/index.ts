@@ -45,3 +45,29 @@ export const buyProduct = (req: BuyRequest) =>
   api<BuyResponse>(`/products/${req.productId}/buy`, { method: 'POST' });
 export const topupStars = (amount: number) =>
   api<BuyResponse>('/topup', { method: 'POST', body: JSON.stringify({ amount }) });
+
+export interface AdminStarsStats {
+  bot: { balance: number; revenue: number };
+  platform: { totalSalesStars: number; pendingBuys: number; pendingTopups: number; liveProducts: number };
+}
+
+export interface AdminPurchase {
+  id: number;
+  amountStars: number;
+  status: string;
+  refunded: boolean;
+  chargeId: string | null;
+  createdAt: number;
+  productTitle: string;
+  buyer: { username: string | null; firstName: string; telegramId: number };
+}
+
+export const getAdminMe = () => api<{ isAdmin: boolean; telegramId: number }>('/admin/me');
+export const getAdminStars = () => api<AdminStarsStats>('/admin/stars');
+export const getAdminPending = () => api<Product[]>('/admin/pending');
+export const adminModerate = (id: number, status: ModerationStatus) =>
+  api<{ id: number; moderationStatus: ModerationStatus }>(`/admin/products/${id}/moderate`, { method: 'POST', body: JSON.stringify({ status }) });
+export const getAdminPurchases = (limit = 50) =>
+  api<AdminPurchase[]>(`/admin/purchases?limit=${limit}`);
+export const adminRefund = (purchaseId: number) =>
+  api<{ ok: boolean; purchaseId: number }>('/admin/refund', { method: 'POST', body: JSON.stringify({ purchaseId }) });

@@ -10,17 +10,25 @@ const API_BASE =
     ? `https://${ENV_API}`
     : ENV_API || '/api';
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   if (raw) headers['X-Init-Data'] = raw;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const msg = (data && (data as { error?: string }).error) || `HTTP ${res.status}`;
-    throw new Error(msg);
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: controller.signal });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg = (data && (data as { error?: string }).error) || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return data as T;
+  } finally {
+    window.clearTimeout(timer);
   }
-  return data as T;
 }

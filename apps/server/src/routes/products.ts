@@ -11,7 +11,7 @@ import {
   validateListing,
   validatePatch,
 } from '../lib/market';
-import { createInvoiceLink } from '../lib/payments';
+import { createInvoiceLink, makeBuyPayload } from '../lib/payments';
 import type { Category, MediaType, ModerationStatus, Product } from '@gm/shared';
 
 export { validateListing, validatePatch } from '../lib/market';
@@ -20,10 +20,6 @@ export const productsRoute = new Hono();
 
 function makeSlug(userId: number): string {
   return `u${userId}-${randomBytes(4).toString('hex')}`;
-}
-
-function makePayload(productId: number, userId: number): string {
-  return `pay:${productId}:${userId}:${randomBytes(4).toString('hex')}`;
 }
 
 async function attachSellers<R extends { sellerId: number | null }>(rows: R[]): Promise<Array<R & { seller: { id: number; username: string | null; firstName: string } | null }>> {
@@ -37,7 +33,10 @@ async function attachSellers<R extends { sellerId: number | null }>(rows: R[]): 
   }));
 }
 
-function toDto(row: (typeof products.$inferSelect) & { seller?: { id: number; username: string | null; firstName: string } | null }): Product {
+function toDto(
+  row: (typeof products.$inferSelect) & { seller?: { id: number; username: string | null; firstName: string } | null },
+  opts: { includeConfig?: boolean } = {},
+): Product {
   const mediaType = (row.mediaType ?? CATEGORY_META[row.category as Category]?.mediaType ?? 'photo') as MediaType;
   return {
     id: row.id,
@@ -49,7 +48,7 @@ function toDto(row: (typeof products.$inferSelect) & { seller?: { id: number; us
     downloads: row.downloads,
     verified: row.verified,
     glyph: row.glyph,
-    configCode: row.configCode,
+    ...(opts.includeConfig ? { configCode: row.configCode } : {}),
     active: row.active,
     sortOrder: row.sortOrder,
     sellerId: row.sellerId,
@@ -78,7 +77,7 @@ productsRoute.get('/products', async (c) => {
   const admins = rows.filter((r) => r.sellerId == null).sort((a, b) => a.sortOrder - b.sortOrder);
   const users_ = rows.filter((r) => r.sellerId != null).sort((a, b) => b.id - a.id);
   const out = await attachSellers([...admins, ...users_]);
-  return c.json(out.map(toDto));
+  return c.json(out.map((r) => toDto(r)));
 });
 
 productsRoute.get('/products/mine', async (c) => {
@@ -89,7 +88,7 @@ productsRoute.get('/products/mine', async (c) => {
     .where(eq(products.sellerId, u.id))
     .orderBy(desc(products.id));
   const out = await attachSellers(rows);
-  return c.json(out.map(toDto));
+  return c.json(out.map((r) => toDto(r, { includeConfig: true })));
 });
 
 productsRoute.post('/products', async (c) => {
@@ -131,7 +130,7 @@ productsRoute.post('/products', async (c) => {
     .returning();
 
   const [out] = await attachSellers([created]);
-  return c.json(toDto(out), 201);
+  return c.json(toDto(out, { includeConfig: true }), 201);
 });
 
 async function getOwned(id: number, userId: number) {
@@ -188,7 +187,7 @@ productsRoute.patch('/products/:id', async (c) => {
 
   const [updated] = await db.update(products).set(next).where(eq(products.id, id)).returning();
   const [out] = await attachSellers([updated]);
-  return c.json(toDto(out));
+  return c.json(toDto(out, { includeConfig: true }));
 });
 
 productsRoute.delete('/products/:id', async (c) => {
@@ -255,14 +254,14 @@ productsRoute.post('/products/:id/pay', async (c) => {
             userId: u.id,
             productId: prod.id,
             chargeId: null,
-            payload: makePayload(prod.id, u.id),
+            payload: makeBuyPayload(prod.id, u.id),
             amountStars: price,
             status: 'paid',
             createdAt: Date.now(),
           })
           .returning();
 
-        await tx.update(products).set({ downloads: prod.downloads + 1 }).where(eq(products.id, prod.id));
+        await tx.update(products).set({ downloads: sql`${products.downloads} + 1` }).where(eq(products.id, prod.id));
 
         return { ok: true as const, method: (useTn ? 'tn' : 'stars') as 'tn' | 'stars', purchaseId: purchase.id };
       });
@@ -271,7 +270,7 @@ productsRoute.post('/products/:id/pay', async (c) => {
     }
 
     // Neither balance covers the price → Telegram Stars invoice.
-    const payload = makePayload(prod.id, u.id);
+    const payload = makeBuyPayload(prod.id, u.id);
     const link = await createInvoiceLink({
       title: prod.title,
       description: `${prod.subtitle}\nCategory: ${prod.category}\nVerified config`,

@@ -62,7 +62,6 @@ export interface AdminPurchase {
   buyer: { username: string | null; firstName: string; telegramId: number };
 }
 
-export const getAdminMe = () => api<{ isAdmin: boolean; telegramId: number }>('/admin/me');
 export const getAdminStars = () => api<AdminStarsStats>('/admin/stars');
 export const getAdminPending = () => api<Product[]>('/admin/pending');
 export const adminModerate = (id: number, status: ModerationStatus) =>

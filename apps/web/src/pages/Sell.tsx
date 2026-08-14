@@ -125,7 +125,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
     setTitle(p.title);
     setSubtitle(p.subtitle);
     setPrice(String(p.priceStars));
-    setCode(p.configCode);
+    setCode(p.configCode ?? '');
     setCategory((p.category as SellCategory) ?? 'gearbox');
     setMedia({
       ...(p.media?.previewUrl ? { previewUrl: p.media.previewUrl } : {}),

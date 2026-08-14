@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
 import { purchases, users } from '../db/schema';
 import { getUser } from './auth';
+import { isAdminTelegramId } from '../lib/admin';
 
 export const meRoute = new Hono();
 
@@ -31,6 +32,7 @@ meRoute.get('/me', async (c) => {
     },
     purchasesCount: paid?.count ?? 0,
     totalSpent: paid?.total ?? 0,
+    isAdmin: isAdminTelegramId(user.telegramId),
   });
 });
 

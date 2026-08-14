@@ -29,7 +29,7 @@ export interface Product {
   downloads: number;
   verified: boolean;
   glyph: string;
-  configCode: string;
+  configCode?: string;
   active: boolean;
   sortOrder: number;
   sellerId: number | null;
@@ -109,6 +109,7 @@ export interface MeResponse {
   user: User;
   purchasesCount: number;
   totalSpent: number;
+  isAdmin: boolean;
 }
 
 export interface BuyResponse {

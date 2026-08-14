@@ -209,6 +209,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
   const [tn, setTn] = useState<number | null>(null);
+  const [meId, setMeId] = useState<number | null>(null);
   const [payRes, setPayRes] = useState<PayResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
@@ -221,6 +222,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       if (me) {
         setBalance(me.user.creditsStars);
         setTn(me.user.creditsTn);
+        setMeId(me.user.id);
       }
       setProducts(prods);
     } catch (e) {
@@ -232,6 +234,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
     if (!active) return;
     load();
     const id = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       getMe().then((me) => {
         if (me) {
           setBalance(me.user.creditsStars);
@@ -293,7 +296,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       ) : (
         <div className="tiles">
           {filtered.map((p) => (
-            <Tile key={p.id} p={p} balance={balance} tn={tn} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onInvoicePaid={() => load()} onOpenEscrow={onOpenEscrow} />
+            <Tile key={p.id} p={p} balance={balance} tn={tn} meId={meId} onPaid={(res) => { setPayRes(res); load(); }} onInvoicePaid={() => load()} onOpenEscrow={onOpenEscrow} />
           ))}
           {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>

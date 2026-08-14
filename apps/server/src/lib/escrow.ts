@@ -46,8 +46,9 @@ export async function actTrade(
   const [updated] = await db
     .update(trades)
     .set({ status: TRANSITIONS[action].to, updatedAt: Date.now() })
-    .where(eq(trades.id, tradeId))
+    .where(and(eq(trades.id, tradeId), eq(trades.status, TRANSITIONS[action].from)))
     .returning();
+  if (!updated) return { ok: false, error: 'bad_status' };
 
   await notifyTrade(updated, action, userId);
   return { ok: true, trade: updated };

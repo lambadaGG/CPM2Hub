@@ -13,15 +13,33 @@ export interface AuthedUser {
 
 const ANON_ID = 1;
 
+const USER_CACHE_TTL = 60_000;
+const userCache = new Map<number, { row: typeof users.$inferSelect; ts: number }>();
+
 async function findOrCreateUser(telegramId: number, firstName: string, username?: string | null, language?: string | null) {
+  const cached = userCache.get(telegramId);
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.row;
+
+  let row: typeof users.$inferSelect | undefined;
   const [existing] = await db.select().from(users).where(eq(users.telegramId, telegramId));
-  if (existing) return existing;
-  const [created] = await db
-    .insert(users)
-    .values({ telegramId, firstName, username: username ?? null, language: language ?? null, createdAt: Date.now() })
-    .onConflictDoNothing()
-    .returning();
-  return created;
+  if (existing) {
+    row = existing;
+  } else {
+    const [created] = await db
+      .insert(users)
+      .values({ telegramId, firstName, username: username ?? null, language: language ?? null, createdAt: Date.now() })
+      .onConflictDoNothing()
+      .returning();
+    if (created) {
+      row = created;
+    } else {
+      const [again] = await db.select().from(users).where(eq(users.telegramId, telegramId));
+      row = again;
+    }
+  }
+
+  if (row) userCache.set(telegramId, { row, ts: Date.now() });
+  return row;
 }
 
 export async function auth(c: Context, next: Next) {
@@ -49,6 +67,7 @@ export async function auth(c: Context, next: Next) {
   }
 
   const user = await findOrCreateUser(telegramId, firstName, username, language);
+  if (!user) return c.json({ error: 'user_lookup_failed' }, 500);
   c.set('user', {
     id: user.id,
     telegramId: user.telegramId,

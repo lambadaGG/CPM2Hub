@@ -19,7 +19,7 @@ app.use(
   cors({
     origin: ['https://web.telegram.org', process.env.WEBAPP_URL ?? ''],
     allowHeaders: ['Content-Type', 'X-Init-Data'],
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
 

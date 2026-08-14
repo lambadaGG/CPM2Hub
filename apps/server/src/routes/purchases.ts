@@ -24,7 +24,7 @@ purchasesRoute.get('/my/downloads', async (c) => {
       amountStars: r.p.amountStars,
       status: r.p.status,
       createdAt: r.p.createdAt,
-      product: productToDto(r.product),
+      product: productToDto(r.product, { includeConfig: true }),
     })),
   );
 });

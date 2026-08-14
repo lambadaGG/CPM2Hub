@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { initDataUser } from '@telegram-apps/sdk';
-import { getAdminMe, type User } from './api';
+import { getMe, type User } from './api';
 import { IconSprite } from './components/Icons';
 import { TabBar, type TabId } from './components/TabBar';
 import { ToastProvider } from './components/Toast';
@@ -37,7 +37,7 @@ export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
 
   useEffect(() => {
     if (!isTelegramApp) return;
-    getAdminMe().then((r) => setIsAdmin(r.isAdmin)).catch(() => {});
+    getMe().then((r) => setIsAdmin(r.isAdmin)).catch(() => {});
   }, [isTelegramApp]);
 
   if (!isTelegramApp) {

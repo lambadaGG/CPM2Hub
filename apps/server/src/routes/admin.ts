@@ -4,19 +4,14 @@ import { db } from '../db/index';
 import { products, purchases, topups, users } from '../db/schema';
 import { getUser } from './auth';
 import { fetchStarTransactions, refundPurchase } from '../lib/stars';
+import { isAdminTelegramId } from '../lib/admin';
 import type { ModerationStatus } from '@gm/shared';
 
 export const adminRoute = new Hono();
 
 function isAdmin(telegramId: number): boolean {
-  const list = process.env.ADMIN_IDS ?? '';
-  return list.split(',').map((s) => s.trim()).filter(Boolean).includes(String(telegramId));
+  return isAdminTelegramId(telegramId);
 }
-
-adminRoute.get('/admin/me', async (c) => {
-  const u = getUser(c);
-  return c.json({ isAdmin: isAdmin(u.telegramId), telegramId: u.telegramId });
-});
 
 adminRoute.get('/admin/stars', async (c) => {
   const u = getUser(c);

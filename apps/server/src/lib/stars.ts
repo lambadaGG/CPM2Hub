@@ -53,41 +53,49 @@ function esc(s: string): string {
 
 /** Atomically mark a pending topup as paid and credit the balance. Idempotent. */
 export async function applyTopup(topupId: number, chargeId: string | null): Promise<boolean> {
-  const [updated] = await db
-    .update(topups)
-    .set({ status: 'paid', chargeId })
-    .where(and(eq(topups.id, topupId), eq(topups.status, 'pending')))
-    .returning();
-  if (!updated) return false;
-  await db
-    .update(users)
-    .set({ creditsStars: sql`${users.creditsStars} + ${updated.amountStars}` })
-    .where(eq(users.id, updated.userId));
-  await notifyTopup(updated.userId, updated.amountStars);
+  const result = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(topups)
+      .set({ status: 'paid', chargeId })
+      .where(and(eq(topups.id, topupId), eq(topups.status, 'pending')))
+      .returning();
+    if (!updated) return null;
+    await tx
+      .update(users)
+      .set({ creditsStars: sql`${users.creditsStars} + ${updated.amountStars}` })
+      .where(eq(users.id, updated.userId));
+    return { userId: updated.userId, amountStars: updated.amountStars };
+  });
+  if (!result) return false;
+  await notifyTopup(result.userId, result.amountStars);
   return true;
 }
 
 /** Atomically mark a pending purchase as paid, bump downloads and credit the seller. Idempotent. */
 export async function applyPurchase(purchaseId: number, chargeId: string | null, amountStars: number): Promise<boolean> {
-  const [updated] = await db
-    .update(purchases)
-    .set({ status: 'paid', chargeId, amountStars })
-    .where(and(eq(purchases.id, purchaseId), eq(purchases.status, 'pending')))
-    .returning();
-  if (!updated) return false;
+  const result = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(purchases)
+      .set({ status: 'paid', chargeId, amountStars })
+      .where(and(eq(purchases.id, purchaseId), eq(purchases.status, 'pending')))
+      .returning();
+    if (!updated) return null;
 
-  const [product] = await db.select().from(products).where(eq(products.id, updated.productId));
-  if (product) {
-    await db.update(products).set({ downloads: product.downloads + 1 }).where(eq(products.id, product.id));
+    const [product] = await tx.select().from(products).where(eq(products.id, updated.productId));
+    if (!product) return { userId: updated.userId, title: 'Item', configCode: '', sellerId: null };
+
+    await tx.update(products).set({ downloads: sql`${products.downloads} + 1` }).where(eq(products.id, product.id));
     if (product.sellerId != null) {
-      await db
+      await tx
         .update(users)
         .set({ creditsStars: sql`${users.creditsStars} + ${amountStars}` })
         .where(eq(users.id, product.sellerId));
-      await notifySeller(product.sellerId, product.title, amountStars);
     }
-    await notifyBuyer(updated.userId, product.title, product.configCode);
-  }
+    return { userId: updated.userId, title: product.title, configCode: product.configCode, sellerId: product.sellerId };
+  });
+  if (!result) return false;
+  if (result.sellerId != null) await notifySeller(result.sellerId, result.title, amountStars);
+  await notifyBuyer(result.userId, result.title, result.configCode);
   return true;
 }
 
@@ -225,7 +233,7 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
           .where(eq(users.id, purchase.userId));
       }
       if (product) {
-        await tx.update(products).set({ downloads: product.downloads }).where(eq(products.id, product.id));
+        await tx.update(products).set({ downloads: sql`${products.downloads} + 1` }).where(eq(products.id, product.id));
       }
       await tx.update(purchases).set({ refunded: false }).where(eq(purchases.id, purchaseId));
     });

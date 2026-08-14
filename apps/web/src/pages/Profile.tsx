@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { openTelegramLink } from '@telegram-apps/sdk';
+import { openInvoice, openTelegramLink } from '@telegram-apps/sdk';
 import { getDownloads, getMe, getTrades, topupStars } from '../api';
 import type { Purchase, Trade, User } from '../api';
 import { Icon } from '../components/Icons';
@@ -47,7 +47,7 @@ function SubCard() {
   );
 }
 
-function TopUpCard() {
+function TopUpCard({ onPaid }: { onPaid: () => void }) {
   const [amount, setAmount] = useState(100);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -59,8 +59,22 @@ function TopUpCard() {
     try {
       const res = await topupStars(amount);
       if (res.link) {
-        openTelegramLink(res.link);
-        toast(t('profile.topup.invoice'));
+        try {
+          const status = await openInvoice(res.link, 'url');
+          if (status === 'paid') {
+            toast(t('profile.topup.paid'));
+            onPaid();
+          } else if (status === 'pending') {
+            toast(t('profile.topup.pending'));
+          } else if (status === 'failed') {
+            toast(t('profile.topup.failed'));
+          } else {
+            toast(t('profile.topup.cancelled'));
+          }
+        } catch {
+          openTelegramLink(res.link);
+          toast(t('profile.topup.invoice'));
+        }
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : t('profile.topup.invoice'));
@@ -158,7 +172,7 @@ export function Profile({ user: initial }: { user: User | null }) {
       </div>
 
       <SubCard />
-      <TopUpCard />
+      <TopUpCard onPaid={() => getMe().then((r) => setMe(r.user)).catch(() => {})} />
 
       <div className="card">
         <h2 className="card-title">{t('profile.downloads')}</h2>

@@ -60,6 +60,7 @@ export const purchases = pgTable(
     payload: text('payload').notNull(),
     amountStars: integer('amount_stars').notNull().default(0),
     status: text('status', { enum: ['pending', 'paid'] }).notNull().default('pending'),
+    refunded: boolean('refunded').notNull().default(false),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   },
   (t) => [

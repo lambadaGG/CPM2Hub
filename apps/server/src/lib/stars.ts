@@ -30,6 +30,20 @@ export async function fetchStarTransactions(opts: { offset?: number; limit?: num
   return { transactions: res.transactions ?? [], balance: res.balance ?? 0 };
 }
 
+/** Refund a Telegram Stars charge via the official Bot API (Bot API 7.0+). */
+export async function refundStarPayment(telegramId: number, chargeId: string): Promise<void> {
+  const { getBot } = await import('../bot');
+  const bot = getBot();
+  const api = bot.api as unknown as {
+    callApi: (method: string, p: Record<string, unknown>) => Promise<boolean>;
+  };
+  const ok = await api.callApi('refundStarPayment', {
+    user_id: telegramId,
+    telegram_payment_charge_id: chargeId,
+  });
+  if (!ok) throw new Error('refund declined');
+}
+
 async function sendMessage(telegramId: number, text: string): Promise<void> {
   try {
     const { getBot } = await import('../bot');
@@ -145,4 +159,53 @@ export async function reconcileStars(): Promise<number> {
   }
 
   return applied;
+}
+
+/**
+ * Refund a paid purchase. For charge-based payments refunds the Telegram Stars
+ * via the official Bot API and reverses the internal ledger (seller credit,
+ * downloads). For balance-based payments reverses the transfer by crediting the
+ * buyer back. Idempotent — refunded purchases are skipped.
+ */
+export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean; error?: string }> {
+  const [purchase] = await db.select().from(purchases).where(eq(purchases.id, purchaseId));
+  if (!purchase || purchase.status !== 'paid' || purchase.refunded) return { ok: false, error: 'not_refundable' };
+
+  const [product] = await db.select().from(products).where(eq(products.id, purchase.productId));
+
+  if (purchase.chargeId) {
+    const [buyer] = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, purchase.userId));
+    if (!buyer) return { ok: false, error: 'no_buyer' };
+    try {
+      await refundStarPayment(buyer.telegramId, purchase.chargeId);
+    } catch (err) {
+      return { ok: false, error: `refund_failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(purchases).set({ refunded: true }).where(eq(purchases.id, purchaseId));
+    if (product?.sellerId != null) {
+      await tx
+        .update(users)
+        .set({ creditsStars: sql`${users.creditsStars} - ${purchase.amountStars}` })
+        .where(eq(users.id, product.sellerId));
+    }
+    if (!purchase.chargeId) {
+      await tx
+        .update(users)
+        .set({ creditsStars: sql`${users.creditsStars} + ${purchase.amountStars}` })
+        .where(eq(users.id, purchase.userId));
+    }
+    if (product) {
+      await tx.update(products).set({ downloads: Math.max(0, product.downloads - 1) }).where(eq(products.id, product.id));
+    }
+  });
+
+  const [buyer] = await db.select().from(users).where(eq(users.id, purchase.userId));
+  if (buyer) {
+    await sendMessage(buyer.telegramId, `↩️ Purchase **${product?.title ?? 'item'}** was refunded. The Stars have been returned.`);
+  }
+
+  return { ok: true };
 }

@@ -8,7 +8,7 @@ import { productsRoute } from './routes/products';
 import { purchasesRoute } from './routes/purchases';
 import { tradesRoute } from './routes/trades';
 import { adminRoute } from './routes/admin';
-import { getBot, setupWebhook } from './bot';
+import { getBot, setupWebhook, setBotCommands, WEBHOOK_SECRET } from './bot';
 import { reconcileStars } from './lib/stars';
 
 const app = new Hono();
@@ -43,6 +43,10 @@ async function main() {
     if (webhookUrl) {
       await setupWebhook(bot);
       app.post('/webhook', async (c) => {
+        // Telegram sets X-Telegram-Bot-Api-Secret-Token; refuse unverified updates
+        if (WEBHOOK_SECRET && c.req.header('X-Telegram-Bot-Api-Secret-Token') !== WEBHOOK_SECRET) {
+          return c.json({ ok: false }, 401);
+        }
         const update = await c.req.json();
         try {
           await bot.handleUpdate(update);
@@ -56,6 +60,7 @@ async function main() {
       bot.start({ drop_pending_updates: true });
       console.log('[bot] polling mode');
     }
+    await setBotCommands(bot).catch((err) => console.error('[bot] setMyCommands failed', err));
   } else {
     console.log('[bot] BOT_TOKEN not set — API-only mode');
   }

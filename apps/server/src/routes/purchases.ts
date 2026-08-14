@@ -14,7 +14,7 @@ purchasesRoute.get('/my/downloads', async (c) => {
     .select({ p: purchases, product: products })
     .from(purchases)
     .innerJoin(products, eq(purchases.productId, products.id))
-    .where(and(eq(purchases.userId, u.id), eq(purchases.status, 'paid')));
+    .where(and(eq(purchases.userId, u.id), eq(purchases.status, 'paid'), eq(purchases.refunded, false)));
 
   return c.json(
     rows.map((r) => ({
@@ -36,6 +36,7 @@ purchasesRoute.post('/products/:id/buy', async (c) => {
 
   const [product] = await db.select().from(products).where(eq(products.id, id));
   if (!product || !product.active || product.moderationStatus !== 'approved') return c.json({ error: 'not_found' }, 404);
+  if (product.sellerId === u.id) return c.json({ error: 'self_pay' }, 400);
 
   const payload = makeBuyPayload(product.id, u.id);
   const link = await createInvoiceLink({

@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
 import { products, purchases, topups } from '../db/schema';
 import { getUser } from './auth';
-import { fetchStarTransactions } from '../lib/stars';
+import { fetchStarTransactions, refundPurchase } from '../lib/stars';
 import type { ModerationStatus } from '@gm/shared';
 
 export const adminRoute = new Hono();
@@ -58,6 +58,20 @@ adminRoute.get('/admin/stars', async (c) => {
       payload: t.bot_payload ?? null,
     })),
   });
+});
+
+adminRoute.post('/admin/refund', async (c) => {
+  const u = getUser(c);
+  if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
+
+  const body = await c.req.json().catch(() => null);
+  const id = Number((body as { purchaseId?: unknown } | null)?.purchaseId);
+  if (!Number.isInteger(id)) return c.json({ error: 'bad_id' }, 400);
+
+  const res = await refundPurchase(id);
+  if (!res.ok) return c.json({ error: res.error ?? 'failed' }, 400);
+
+  return c.json({ ok: true, purchaseId: id });
 });
 
 adminRoute.post('/admin/products/:id/moderate', async (c) => {

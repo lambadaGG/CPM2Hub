@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { openTelegramLink } from '@telegram-apps/sdk';
+import { openInvoice, openTelegramLink } from '@telegram-apps/sdk';
 import { getMe, getProducts, buyProduct, payProduct } from '../api';
 import { ALL_CATEGORIES, CATEGORY_META } from '../api';
 import type { Category, PayResponse, Product, User } from '../api';
@@ -89,11 +89,12 @@ function Preview({ p }: { p: Product }) {
   );
 }
 
-function Tile({ p, balance, meId, onPaid, onOpenEscrow }: {
+function Tile({ p, balance, meId, onPaid, onInvoicePaid, onOpenEscrow }: {
   p: Product;
   balance: number | null;
   meId: number | null;
   onPaid: (res: PayResponse) => void;
+  onInvoicePaid: () => void;
   onOpenEscrow?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -109,8 +110,24 @@ function Tile({ p, balance, meId, onPaid, onOpenEscrow }: {
     try {
       const res = await buyProduct({ productId: p.id });
       if (res.link) {
-        openTelegramLink(res.link);
-        toast(t('market.invoice'));
+        try {
+          // Official Mini App flow: web_app_open_invoice → invoice_closed status
+          const status = await openInvoice(res.link, 'url');
+          if (status === 'paid') {
+            toast(t('market.invoicePaid'));
+            onInvoicePaid();
+          } else if (status === 'pending') {
+            toast(t('market.invoicePending'));
+          } else if (status === 'failed') {
+            toast(t('market.invoiceFailed'));
+          } else {
+            toast(t('market.invoiceCancelled'));
+          }
+        } catch {
+          // Fallback for environments without openInvoice support
+          openTelegramLink(res.link);
+          toast(t('market.invoice'));
+        }
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : t('market.invoice'));
@@ -273,7 +290,7 @@ export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User 
       ) : (
         <div className="tiles">
           {filtered.map((p) => (
-            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onOpenEscrow={onOpenEscrow} />
+            <Tile key={p.id} p={p} balance={balance} meId={user ? user.id : null} onPaid={(res) => { setPayRes(res); load(); }} onInvoicePaid={() => load()} onOpenEscrow={onOpenEscrow} />
           ))}
           {onOpenEscrow && <EscrowTile onOpen={onOpenEscrow} />}
         </div>

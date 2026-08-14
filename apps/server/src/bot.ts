@@ -10,7 +10,11 @@ import { actTrade, buildTradeMessage, type TradeAction } from './lib/escrow';
 let bot: Bot | null = null;
 
 // Secret token for webhook verification — задать в env WEBHOOK_SECRET
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
+export const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? '';
+
+const SUPPORT_LINK = 'https://t.me/CPM2Hub_Support';
+const ANNOUNCEMENTS_LINK = 'https://t.me/CPM2Hub_Announcements';
+const COMMUNITY_LINK = 'https://t.me/CPM2Hub_Community';
 
 export function getBot(): Bot {
   if (bot) return bot;
@@ -30,6 +34,15 @@ export async function setupWebhook(bot: Bot): Promise<void> {
   });
 }
 
+export async function setBotCommands(bot: Bot): Promise<void> {
+  await bot.api.setMyCommands([
+    { command: 'start', description: 'Open GearMarket' },
+    { command: 'terms', description: 'Terms & Conditions' },
+    { command: 'support', description: 'Get help' },
+    { command: 'paysupport', description: 'Payment & refund support' },
+  ]);
+}
+
 function registerHandlers(b: Bot) {
   b.command('start', async (ctx) => {
     const webAppUrl = process.env.WEBAPP_URL;
@@ -39,12 +52,33 @@ function registerHandlers(b: Bot) {
         reply_markup: {
           inline_keyboard: [
             [{ text: 'Open GearMarket', web_app: { url: webAppUrl ?? '' } }],
-            [{ text: '📢 Announcements', url: 'https://t.me/CPM2Hub_Announcements' }],
-            [{ text: '💬 Community Chat', url: 'https://t.me/CPM2Hub_Community' }],
-            [{ text: '🆘 Support', url: 'https://t.me/CPM2Hub_Support' }],
+            [{ text: '📢 Announcements', url: ANNOUNCEMENTS_LINK }],
+            [{ text: '💬 Community Chat', url: COMMUNITY_LINK }],
+            [{ text: '🆘 Support', url: SUPPORT_LINK }],
           ],
         },
       },
+    );
+  });
+
+  b.command('terms', async (ctx) => {
+    await ctx.reply(
+      `📜 *Terms & Conditions*\n\nBy using GearMarket you agree that:\n• All listings must be original configurations.\n• Digital goods are delivered instantly after payment.\n• Fraud or scam attempts lead to a ban.\n\nRefunds are handled per order via support.`,
+      { parse_mode: 'Markdown' },
+    );
+  });
+
+  b.command('support', async (ctx) => {
+    await ctx.reply(
+      `🆘 *Support*\n\nQuestions about orders, payments or listings?\n\nWrite to us: ${SUPPORT_LINK}\nCommunity: ${COMMUNITY_LINK}`,
+      { parse_mode: 'Markdown' },
+    );
+  });
+
+  b.command('paysupport', async (ctx) => {
+    await ctx.reply(
+      `💳 *Payment Support*\n\nPaid but didn't receive the config, or need a refund?\n\n1. Write to ${SUPPORT_LINK}\n2. Attach the receipt from Profile → History.\n\nWe verify the payment via Telegram's API and refund within 3 days.`,
+      { parse_mode: 'Markdown' },
     );
   });
 

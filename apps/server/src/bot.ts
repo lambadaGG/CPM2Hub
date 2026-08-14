@@ -22,6 +22,10 @@ export function getBot(): Bot {
   if (!token) throw new Error('BOT_TOKEN is not set');
   bot = new Bot(token);
   registerHandlers(bot);
+  // Unhandled middleware errors land here instead of crashing a webhook request.
+  bot.catch((err) => {
+    console.error('[bot] unhandled error:', err.error ?? err);
+  });
   return bot;
 }
 

@@ -23,7 +23,7 @@ export async function fetchStarTransactions(opts: { offset?: number; limit?: num
   const params: Record<string, number> = {};
   if (opts.offset != null) params.offset = opts.offset;
   if (opts.limit != null) params.limit = opts.limit;
-  const api = bot.api as unknown as {
+  const api = bot.api.raw as unknown as {
     callApi: (method: string, p: Record<string, number>) => Promise<{ transactions: StarTransaction[]; balance: number }>;
   };
   const res = await api.callApi('getStarTransactions', params);
@@ -34,7 +34,7 @@ export async function fetchStarTransactions(opts: { offset?: number; limit?: num
 export async function refundStarPayment(telegramId: number, chargeId: string): Promise<void> {
   const { getBot } = await import('../bot');
   const bot = getBot();
-  const api = bot.api as unknown as {
+  const api = bot.api.raw as unknown as {
     callApi: (method: string, p: Record<string, unknown>) => Promise<boolean>;
   };
   const ok = await api.callApi('refundStarPayment', {
@@ -51,6 +51,11 @@ async function sendMessage(telegramId: number, text: string): Promise<void> {
   } catch {
     /* user may have blocked the bot — ignore */
   }
+}
+
+/** Escape user-controlled text for legacy Telegram Markdown. */
+function esc(s: string): string {
+  return s.replace(/([_*[\]`\\])/g, '\\$1');
 }
 
 /** Atomically mark a pending topup as paid and credit the balance. Idempotent. */
@@ -105,9 +110,9 @@ async function notifyBuyer(userId: number, title: string, configCode: string): P
   await sendMessage(
     user.telegramId,
     [
-      `✅ Config purchased: **${title}**`,
+      `✅ Config purchased: **${esc(title)}**`,
       ``,
-      `Hey ${greet}, your config code:`,
+      `Hey ${esc(greet)}, your config code:`,
       '```txt',
       configCode,
       '```',
@@ -121,7 +126,7 @@ async function notifySeller(userId: number, title: string, amountStars: number):
   if (!seller) return;
   await sendMessage(
     seller.telegramId,
-    `🎉 Your config **${title}** was sold for **${amountStars} ⭐**!\n\nBalance credited: +${amountStars} ⭐`,
+    `🎉 Your config **${esc(title)}** was sold for **${amountStars} ⭐**!\n\nBalance credited: +${amountStars} ⭐`,
   );
 }
 
@@ -204,7 +209,7 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
 
   const [buyer] = await db.select().from(users).where(eq(users.id, purchase.userId));
   if (buyer) {
-    await sendMessage(buyer.telegramId, `↩️ Purchase **${product?.title ?? 'item'}** was refunded. The Stars have been returned.`);
+    await sendMessage(buyer.telegramId, `↩️ Purchase **${esc(product?.title ?? 'item')}** was refunded. The Stars have been returned.`);
   }
 
   return { ok: true };

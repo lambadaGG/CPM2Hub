@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { webhookCallback } from 'grammy';
 import { auth } from './routes/auth';
 import { meRoute } from './routes/me';
 import { productsRoute } from './routes/products';
@@ -42,19 +43,13 @@ async function main() {
 
     if (webhookUrl) {
       await setupWebhook(bot);
-      app.post('/webhook', async (c) => {
-        // Telegram sets X-Telegram-Bot-Api-Secret-Token; refuse unverified updates
-        if (WEBHOOK_SECRET && c.req.header('X-Telegram-Bot-Api-Secret-Token') !== WEBHOOK_SECRET) {
-          return c.json({ ok: false }, 401);
-        }
-        const update = await c.req.json();
-        try {
-          await bot.handleUpdate(update);
-        } catch (err) {
-          console.error('[webhook] update failed', err);
-        }
-        return c.json({ ok: true });
-      });
+      // Recommended grammY webhook integration for Hono: handles the 10s timeout
+      // (prevents Telegram retries from re-processing updates) and verifies the
+      // X-Telegram-Bot-Api-Secret-Token header when a secret is configured.
+      app.post(
+        '/webhook',
+        webhookCallback(bot, 'hono', { secretToken: WEBHOOK_SECRET || undefined }),
+      );
       console.log('[bot] webhook mode →', webhookUrl);
     } else {
       bot.start({ drop_pending_updates: true });

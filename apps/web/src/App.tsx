@@ -50,7 +50,7 @@ export default function App({ isTelegramApp }: { isTelegramApp: boolean }) {
         <IconSprite />
         <div className="app">
           <main className="pages">
-            <div className="page" hidden={tab !== 'market'}><Market user={user} onOpenEscrow={() => setTab('escrow')} onOpenSell={() => setTab('sell')} /></div>
+            <div className="page" hidden={tab !== 'market'}><Market user={user} active={tab === 'market'} onOpenEscrow={() => setTab('escrow')} onOpenSell={() => setTab('sell')} /></div>
             <div className="page" hidden={tab !== 'tools'}><Tools /></div>
             <div className="page" hidden={tab !== 'escrow'}><Escrow /></div>
             <div className="page" hidden={tab !== 'sell'}><Sell onBack={() => setTab('market')} /></div>

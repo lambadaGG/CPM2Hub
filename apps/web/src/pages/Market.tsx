@@ -112,7 +112,7 @@ function EscrowTile({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-export function Market({ user, onOpenEscrow, onOpenSell }: { user: User | null; onOpenEscrow?: () => void; onOpenSell?: () => void }) {
+export function Market({ user, active, onOpenEscrow, onOpenSell }: { user: User | null; active: boolean; onOpenEscrow?: () => void; onOpenSell?: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [balance, setBalance] = useState<number | null>(null);
@@ -140,8 +140,8 @@ export function Market({ user, onOpenEscrow, onOpenSell }: { user: User | null; 
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (active) load();
+  }, [active]);
 
   const filtered = cat === 'all' ? products : products.filter((p) => p.category === cat);
 

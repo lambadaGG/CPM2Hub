@@ -59,8 +59,8 @@ adminRoute.get('/admin/stars', async (c) => {
       amount: t.amount,
       date: t.date,
       kind: t.amount > 0 ? 'income' : 'expense',
-      refund: t.refund?.type === 'success',
-      payload: t.bot_payload ?? null,
+      refund: t.amount < 0,
+      payload: t.source?.type === 'user' ? (t.source.invoice_payload ?? null) : null,
     })),
   });
 });

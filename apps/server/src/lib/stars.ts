@@ -1,16 +1,8 @@
 import { and, eq, sql } from 'drizzle-orm';
+import type { StarAmount, StarTransaction } from 'grammy/types';
 import { db } from '../db/index';
 import { products, purchases, topups, users } from '../db/schema';
 import { parseBuyPayload, parseTopupPayload } from './payments';
-
-export interface StarTransaction {
-  id: string;
-  amount: number;
-  date: number;
-  refund: { type: 'success' | 'failed'; date: number } | null;
-  bot_payload?: string;
-  user?: { id: number };
-}
 
 export interface StarTransactionsResult {
   transactions: StarTransaction[];
@@ -23,21 +15,22 @@ export async function fetchStarTransactions(opts: { offset?: number; limit?: num
   const params: Record<string, number> = {};
   if (opts.offset != null) params.offset = opts.offset;
   if (opts.limit != null) params.limit = opts.limit;
-  const api = bot.api.raw as unknown as {
-    callApi: (method: string, p: Record<string, number>) => Promise<{ transactions: StarTransaction[]; balance: number }>;
-  };
-  const res = await api.callApi('getStarTransactions', params);
-  return { transactions: res.transactions ?? [], balance: res.balance ?? 0 };
+  const res = await bot.api.raw.getStarTransactions(params);
+  let balance = 0;
+  try {
+    const bal: StarAmount = await bot.api.raw.getMyStarBalance();
+    balance = bal.amount ?? 0;
+  } catch {
+    /* balance is best-effort */
+  }
+  return { transactions: res.transactions ?? [], balance };
 }
 
 /** Refund a Telegram Stars charge via the official Bot API (Bot API 7.0+). */
 export async function refundStarPayment(telegramId: number, chargeId: string): Promise<void> {
   const { getBot } = await import('../bot');
   const bot = getBot();
-  const api = bot.api.raw as unknown as {
-    callApi: (method: string, p: Record<string, unknown>) => Promise<boolean>;
-  };
-  const ok = await api.callApi('refundStarPayment', {
+  const ok = await bot.api.raw.refundStarPayment({
     user_id: telegramId,
     telegram_payment_charge_id: chargeId,
   });
@@ -141,8 +134,10 @@ export async function reconcileStars(): Promise<number> {
   let applied = 0;
 
   for (const tx of transactions) {
-    if (tx.refund?.type === 'success') continue;
-    const payload = tx.bot_payload;
+    // Only incoming invoice payments carry a bot payload; outgoing transactions
+    // (refunds, withdrawals) are ignored.
+    if (!tx.source || tx.source.type !== 'user' || tx.source.transaction_type !== 'invoice_payment') continue;
+    const payload = tx.source.invoice_payload;
     if (!payload) continue;
 
     const topup = parseTopupPayload(payload);

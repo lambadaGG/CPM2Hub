@@ -22,8 +22,14 @@ function Stats({ stats }: { stats: AdminStarsStats | null }) {
     <div className="card">
       <h2 className="card-title">{t('admin.stats')}</h2>
       <div className="admin-grid">
-        <div className="admin-stat"><span className="st-label">{t('admin.balance')}</span><span className="st-val">{fmtCompact(stats.bot.balance)} ⭐</span></div>
-        <div className="admin-stat"><span className="st-label">{t('admin.revenue')}</span><span className="st-val">{fmtCompact(stats.bot.revenue)} ⭐</span></div>
+        <div className="admin-stat accent-star">
+          <div className="admin-stat-head"><Icon id="i-vault" className="admin-stat-icon" /><span className="st-label">{t('admin.balance')}</span></div>
+          <span className="st-val">{fmtCompact(stats.bot.balance)} ⭐</span>
+        </div>
+        <div className="admin-stat accent-green">
+          <div className="admin-stat-head"><Icon id="i-zap" className="admin-stat-icon" /><span className="st-label">{t('admin.revenue')}</span></div>
+          <span className="st-val">{fmtCompact(stats.bot.revenue)} ⭐</span>
+        </div>
         <div className="admin-stat"><span className="st-label">{t('admin.sales')}</span><span className="st-val">{fmtCompact(stats.platform.totalSalesStars)} ⭐</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.live')}</span><span className="st-val">{stats.platform.liveProducts}</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.pendingBuys')}</span><span className="st-val">{stats.platform.pendingBuys}</span></div>

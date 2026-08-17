@@ -2,12 +2,12 @@ import { Hono } from 'hono';
 import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
 import { products, purchases, topups, users } from '../db/schema';
-import { getUser, type AppEnv } from './auth';
+import { getUser } from './auth';
 import { fetchStarTransactions, refundPurchase } from '../lib/stars';
 import { isAdminTelegramId } from '../lib/admin';
 import type { ModerationStatus } from '@gm/shared';
 
-export const adminRoute = new Hono<AppEnv>();
+export const adminRoute = new Hono();
 
 function isAdmin(telegramId: number): boolean {
   return isAdminTelegramId(telegramId);
@@ -17,34 +17,26 @@ adminRoute.get('/admin/stars', async (c) => {
   const u = getUser(c);
   if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
 
-  const { transactions, balance: fetchBalance } = await fetchStarTransactions({ limit: 100 });
+  const { balance, transactions } = await fetchStarTransactions({ limit: 100 });
 
-  const platformSalesQuery = c.req.query('platformSales');
-  const salesTotal = platformSalesQuery !== undefined ? Number(platformSalesQuery) : 
-    (await db.select({ salesTotal: sql<number>`coalesce(sum(${purchases.amountStars}), 0)::int` })
-      .from(purchases)
-      .where(eq(purchases.status, 'paid')))[0]?.salesTotal ?? 0;
-  const pendingBuysQuery = c.req.query('pendingBuys');
-  const pendingBuys = pendingBuysQuery !== undefined ? Number(pendingBuysQuery) : 
-    (await db.select({ pendingBuys: sql<number>`count(*)::int` })
-      .from(purchases)
-      .where(eq(purchases.status, 'pending')))[0]?.pendingBuys ?? 0;
-  const pendingTopupsQuery = c.req.query('pendingTopups');
-  const pendingTopups = pendingTopupsQuery !== undefined ? Number(pendingTopupsQuery) : 
-    (await db.select({ pendingTopups: sql<number>`count(*)::int` })
-      .from(topups)
-      .where(eq(topups.status, 'pending')))[0]?.pendingTopups ?? 0;
-  const liveProductsQuery = c.req.query('liveProducts');
-  const liveProducts = liveProductsQuery !== undefined ? Number(liveProductsQuery) : 
-    (await db.select({ liveProducts: sql<number>`count(*)::int` })
-      .from(products)
-      .where(eq(products.active, true)))[0]?.liveProducts ?? 0;
+  const [{ salesTotal }] = await db
+    .select({ salesTotal: sql<number>`coalesce(sum(${purchases.amountStars}), 0)::int` })
+    .from(purchases)
+    .where(eq(purchases.status, 'paid'));
+  const [{ pendingBuys }] = await db
+    .select({ pendingBuys: sql<number>`count(*)::int` })
+    .from(purchases)
+    .where(eq(purchases.status, 'pending'));
+  const [{ pendingTopups }] = await db
+    .select({ pendingTopups: sql<number>`count(*)::int` })
+    .from(topups)
+    .where(eq(topups.status, 'pending'));
+  const [{ liveProducts }] = await db
+    .select({ liveProducts: sql<number>`count(*)::int` })
+    .from(products)
+    .where(eq(products.active, true));
 
-  const botRevenueQuery = c.req.query('botRevenue');
-  const revenue = botRevenueQuery !== undefined ? Number(botRevenueQuery) : 
-    transactions.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const botBalanceQuery = c.req.query('botBalance');
-  const balance = botBalanceQuery !== undefined ? Number(botBalanceQuery) : fetchBalance;
+  const revenue = transactions.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
 
   return c.json({
     bot: {

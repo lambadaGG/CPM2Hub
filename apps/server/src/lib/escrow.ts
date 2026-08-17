@@ -122,6 +122,6 @@ export async function notifyTrade(trade: TradeRow, event: NotifyEvent, actorUser
       if (creator && actorUserId !== creator.id) await sendMessage(creator.telegramId, `${heading[event]}\n${msg}`);
     }
   } catch (err) {
-    console.warn('[escrow] notify failed', err);
+    if (process.env.NODE_ENV !== 'production') console.warn('[escrow] notify failed', err);
   }
 }

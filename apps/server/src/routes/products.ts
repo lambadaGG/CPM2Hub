@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import type { Context } from 'hono';
+import { and, avg, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { db } from '../db/index';
-import { products, purchases, users } from '../db/schema';
-import { getUser } from './auth';
+import { products, purchases, productRatings, users, wishlist } from '../db/schema';
+import { getUser, type AppEnv } from './auth';
 import {
   CATEGORY_META,
   computeModeration,
@@ -16,7 +17,7 @@ import type { Category, MediaType, ModerationStatus, Product } from '@gm/shared'
 
 export { validateListing, validatePatch } from '../lib/market';
 
-export const productsRoute = new Hono();
+export const productsRoute = new Hono<AppEnv>();
 
 function makeSlug(userId: number): string {
   return `u${userId}-${randomBytes(4).toString('hex')}`;
@@ -35,7 +36,7 @@ async function attachSellers<R extends { sellerId: number | null }>(rows: R[]): 
 
 function toDto(
   row: (typeof products.$inferSelect) & { seller?: { id: number; username: string | null; firstName: string } | null },
-  opts: { includeConfig?: boolean } = {},
+  opts: { includeConfig?: boolean; rating?: { avg: number; count: number }; wishlisted?: boolean } = {},
 ): Product {
   const mediaType = (row.mediaType ?? CATEGORY_META[row.category as Category]?.mediaType ?? 'photo') as MediaType;
   return {
@@ -64,20 +65,66 @@ function toDto(
     serverName: row.serverName,
     params: (row.params as Product['params']) ?? {},
     moderationStatus: (row.moderationStatus ?? 'approved') as ModerationStatus,
+    guideUrl: row.guideUrl ?? null,
+    ...(opts.rating ? { rating: opts.rating } : {}),
+    ...(opts.wishlisted != null ? { wishlisted: opts.wishlisted } : {}),
   };
 }
 
-productsRoute.get('/products', async (c) => {
-  const category = c.req.query('category');
+async function attachCommunity(
+  rows: Array<{ id: number }>,
+  userId: number,
+): Promise<Map<number, { avg: number; count: number; wishlisted: boolean }>> {
+  if (rows.length === 0) return new Map();
+  const ids = rows.map((r) => r.id);
+
+  const ratings = await db
+    .select({
+      productId: productRatings.productId,
+      avg: avg(productRatings.value),
+      count: count(productRatings.id),
+    })
+    .from(productRatings)
+    .where(inArray(productRatings.productId, ids))
+    .groupBy(productRatings.productId);
+
+  const wished = await db
+    .select({ productId: wishlist.productId })
+    .from(wishlist)
+    .where(and(eq(wishlist.userId, userId), inArray(wishlist.productId, ids)));
+
+  const wishedSet = new Set(wished.map((w) => w.productId));
+  const map = new Map<number, { avg: number; count: number; wishlisted: boolean }>();
+  for (const r of ratings) {
+    map.set(r.productId, {
+      avg: Math.round((Number(r.avg) || 0) * 10) / 10,
+      count: Number(r.count) || 0,
+      wishlisted: wishedSet.has(r.productId),
+    });
+  }
+  for (const id of ids) {
+    if (!map.has(id)) map.set(id, { avg: 0, count: 0, wishlisted: wishedSet.has(id) });
+  }
+  return map;
+}
+
+async function listProducts(c: Context<AppEnv>, category?: Category): Promise<Product[]> {
+  const u = getUser(c);
   const base = and(eq(products.active, true), eq(products.moderationStatus, 'approved'));
   const rows = category
-    ? await db.select().from(products).where(and(base, eq(products.category, category as Category)))
+    ? await db.select().from(products).where(and(base, eq(products.category, category)))
     : await db.select().from(products).where(base);
 
   const admins = rows.filter((r) => r.sellerId == null).sort((a, b) => a.sortOrder - b.sortOrder);
   const users_ = rows.filter((r) => r.sellerId != null).sort((a, b) => b.id - a.id);
   const out = await attachSellers([...admins, ...users_]);
-  return c.json(out.map((r) => toDto(r)));
+  const community = await attachCommunity(out, u.id);
+  return out.map((r) => toDto(r, { rating: community.get(r.id), wishlisted: community.get(r.id)?.wishlisted }));
+}
+
+productsRoute.get('/products', async (c) => {
+  const category = c.req.query('category');
+  return c.json(await listProducts(c, category ? (category as Category) : undefined));
 });
 
 productsRoute.get('/products/mine', async (c) => {
@@ -126,6 +173,7 @@ productsRoute.post('/products', async (c) => {
       serverName: v.serverName || null,
       params: v.params,
       moderationStatus: moderation,
+      guideUrl: typeof body.guideUrl === 'string' && body.guideUrl.trim() ? body.guideUrl.trim() : null,
     })
     .returning();
 
@@ -174,6 +222,9 @@ productsRoute.patch('/products/:id', async (c) => {
   if (body.params !== undefined) {
     next.params = body.params;
     contentChanged = true;
+  }
+  if (body.guideUrl !== undefined) {
+    next.guideUrl = typeof body.guideUrl === 'string' && body.guideUrl.trim() ? body.guideUrl.trim() : null;
   }
 
   if (Object.keys(next).length === 0) return c.json({ error: 'nothing_to_update' }, 400);
@@ -285,6 +336,56 @@ productsRoute.post('/products/:id/pay', async (c) => {
     console.error('[pay] transaction failed', err);
     return c.json({ error: 'pay_failed' }, 500);
   }
+});
+
+productsRoute.post('/products/:id/rate', async (c) => {
+  const u = getUser(c);
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id)) return c.json({ error: 'bad_id' }, 400);
+
+  const [prod] = await db.select().from(products).where(eq(products.id, id));
+  if (!prod) return c.json({ error: 'not_found' }, 404);
+
+  const body = await c.req.json().catch(() => null);
+  const value = Number(body?.value);
+  if (!Number.isInteger(value) || value < 1 || value > 5) return c.json({ error: 'bad_value' }, 400);
+
+  await db
+    .insert(productRatings)
+    .values({ userId: u.id, productId: id, value, createdAt: Date.now() })
+    .onConflictDoUpdate({ target: [productRatings.userId, productRatings.productId], set: { value } });
+
+  const [agg] = await db
+    .select({ avg: avg(productRatings.value), count: count(productRatings.id) })
+    .from(productRatings)
+    .where(eq(productRatings.productId, id));
+
+  return c.json({
+    rating: { avg: Math.round((Number(agg?.avg) || 0) * 10) / 10, count: Number(agg?.count) || 0 },
+    value,
+  });
+});
+
+productsRoute.post('/products/:id/wishlist', async (c) => {
+  const u = getUser(c);
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id)) return c.json({ error: 'bad_id' }, 400);
+
+  const [prod] = await db.select().from(products).where(eq(products.id, id));
+  if (!prod) return c.json({ error: 'not_found' }, 404);
+
+  const existing = await db
+    .select({ id: wishlist.id })
+    .from(wishlist)
+    .where(and(eq(wishlist.userId, u.id), eq(wishlist.productId, id)));
+
+  if (existing.length > 0) {
+    await db.delete(wishlist).where(and(eq(wishlist.userId, u.id), eq(wishlist.productId, id)));
+    return c.json({ wishlisted: false });
+  }
+
+  await db.insert(wishlist).values({ userId: u.id, productId: id, createdAt: Date.now() }).onConflictDoNothing();
+  return c.json({ wishlisted: true });
 });
 
 export { CATEGORY_META, toDto as productToDto };

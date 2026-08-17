@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS "topups" (
   "status" TEXT NOT NULL DEFAULT 'pending',
   "created_at" BIGINT NOT NULL
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "topups_user_idx" ON "topups" ("user_id");
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "topups_charge_idx" ON "topups" ("charge_id");
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "topups_payload_idx" ON "topups" ("payload");

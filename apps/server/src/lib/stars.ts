@@ -1,8 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { StarAmount, StarTransaction } from 'grammy/types';
 import { db } from '../db/index';
-import { products, purchases, topups, users } from '../db/schema';
+import { products, purchases, topups, users, referralRewards } from '../db/schema';
 import { parseBuyPayload, parseTopupPayload } from './payments';
+import { REFERRAL_PURCHASE_PERCENT } from './gamification';
 
 export interface StarTransactionsResult {
   transactions: StarTransaction[];
@@ -71,7 +72,7 @@ export async function applyTopup(topupId: number, chargeId: string | null): Prom
   return true;
 }
 
-/** Atomically mark a pending purchase as paid, bump downloads and credit the seller. Idempotent. */
+/** Atomically mark a pending purchase as paid, bump downloads, credit the seller, and credit the referrer. Idempotent. */
 export async function applyPurchase(purchaseId: number, chargeId: string | null, amountStars: number): Promise<boolean> {
   const result = await db.transaction(async (tx) => {
     const [updated] = await tx
@@ -91,10 +92,32 @@ export async function applyPurchase(purchaseId: number, chargeId: string | null,
         .set({ creditsStars: sql`${users.creditsStars} + ${amountStars}` })
         .where(eq(users.id, product.sellerId));
     }
-    return { userId: updated.userId, title: product.title, configCode: product.configCode, sellerId: product.sellerId };
+
+    let referrerId: number | null = null;
+    let referralAmount = 0;
+    if (updated.userId) {
+      const [buyer] = await tx.select().from(users).where(eq(users.id, updated.userId));
+      if (buyer?.referredBy) {
+        referralAmount = Math.floor(amountStars * REFERRAL_PURCHASE_PERCENT / 100);
+        if (referralAmount > 0) {
+          referrerId = buyer.referredBy;
+          await tx.update(users).set({ creditsStars: sql`${users.creditsStars} + ${referralAmount}` }).where(eq(users.id, referrerId));
+          await tx.insert(referralRewards).values({
+            referrerId,
+            buyerId: updated.userId,
+            purchaseId: updated.id,
+            amountStars: referralAmount,
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    return { userId: updated.userId, title: product.title, configCode: product.configCode, sellerId: product.sellerId, referrerId, referralAmount };
   });
   if (!result) return false;
   if (result.sellerId != null) await notifySeller(result.sellerId, result.title, amountStars);
+  if (result.referrerId && result.referralAmount > 0) await notifyReferrer(result.referrerId, result.referralAmount);
   await notifyBuyer(result.userId, result.title, result.configCode);
   return true;
 }
@@ -129,6 +152,12 @@ async function notifySeller(userId: number, title: string, amountStars: number):
     seller.telegramId,
     `🎉 Your config **${esc(title)}** was sold for **${amountStars} ⭐**!\n\nBalance credited: +${amountStars} ⭐`,
   );
+}
+
+async function notifyReferrer(userId: number, amountStars: number): Promise<void> {
+  const [user] = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, userId));
+  if (!user) return;
+  await sendMessage(user.telegramId, `🎁 +${amountStars} ⭐ referral bonus — a friend made a purchase!`);
 }
 
 /**
@@ -208,6 +237,12 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
     if (product) {
       await tx.update(products).set({ downloads: Math.max(0, product.downloads - 1) }).where(eq(products.id, product.id));
     }
+
+    const [reward] = await tx.select().from(referralRewards).where(eq(referralRewards.purchaseId, purchaseId));
+    if (reward) {
+      await tx.update(users).set({ creditsStars: sql`${users.creditsStars} - ${reward.amountStars}` }).where(eq(users.id, reward.referrerId));
+      await tx.delete(referralRewards).where(eq(referralRewards.id, reward.id));
+    }
   });
 
   // External Telegram refund last, so the network call happens at most once per claim.
@@ -234,6 +269,11 @@ export async function refundPurchase(purchaseId: number): Promise<{ ok: boolean;
       }
       if (product) {
         await tx.update(products).set({ downloads: sql`${products.downloads} + 1` }).where(eq(products.id, product.id));
+      }
+      const [reward] = await tx.select().from(referralRewards).where(eq(referralRewards.purchaseId, purchaseId));
+      if (reward) {
+        await tx.update(users).set({ creditsStars: sql`${users.creditsStars} + ${reward.amountStars}` }).where(eq(users.id, reward.referrerId));
+        await tx.insert(referralRewards).values(reward);
       }
       await tx.update(purchases).set({ refunded: false }).where(eq(purchases.id, purchaseId));
     });

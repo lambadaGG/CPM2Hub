@@ -6,9 +6,21 @@ const TTL = 24 * 60 * 60 * 1000;
 const NOT_FOUND_TTL = 60 * 60 * 1000;
 const cache = new Map<number, { url: string | null; ts: number }>();
 
+const ALLOWED_HOSTS = new Set(['api.telegram.org']);
+
 export const avatarRoute = new Hono();
 
+function isAllowedUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && ALLOWED_HOSTS.has(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 async function proxyAvatar(c: Context, url: string): Promise<Response> {
+  if (!isAllowedUrl(url)) return c.json({ error: 'forbidden' }, 403);
   const res = await fetch(url);
   if (!res.ok || !res.body) return c.json({ error: 'avatar_fetch_failed' }, 502);
   return new Response(res.body, {

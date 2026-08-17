@@ -723,6 +723,13 @@ img.user-avatar {
   border-radius: 6px;
   padding: 2px 6px;
 }
+.t-guide {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--accent);
+  text-decoration: none; padding: 2px 0;
+}
+.t-guide:hover { text-decoration: underline; }
+.t-guide .icon { width: 13px; height: 13px; }
 .t-rater {
   display: flex; gap: 3px;
   opacity: 0; height: 0;
@@ -900,6 +907,27 @@ img.user-avatar {
   font-size: 12px; font-weight: 800; letter-spacing: 1.5px;
   color: var(--sub);
 }
+
+/* ---------- Referral ---------- */
+.referral-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--line-2);
+  padding-bottom: 8px;
+}
+.ref-tab {
+  flex: 1; padding: 6px 8px; border: none; border-radius: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  color: var(--sub); background: transparent; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ref-tab.active { color: var(--text); background: var(--surface-2); }
+.referral-list { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.ref-user { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.ref-rank { font-size: 11px; font-weight: 800; color: var(--sub); min-width: 22px; }
+.ref-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: var(--surface-2); }
+.ref-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ref-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.ref-meta { font-size: 11px; color: var(--sub); }
 
 /* ---------- Segmented ---------- */
 .segmented {

@@ -15,7 +15,14 @@ export type Category =
   | 'exhaust'
   | 'neon'
   | 'garage'
-  | 'account';
+  | 'account'
+  | 'service'
+  | 'smoke'
+  | 'character'
+  | 'bundle';
+
+/** Categories introduced in the v2 market — shown with a NEW badge. */
+export const NEW_CATEGORIES: Category[] = ['service', 'smoke', 'character', 'bundle'];
 
 export type SellCategory = Exclude<Category, 'account'>;
 
@@ -39,7 +46,7 @@ export interface CategoryMeta {
   label: string;
 }
 
-const LOW: Category[] = ['gearbox', 'vinyl', 'tune', 'bodykit', 'wheels', 'suspension', 'exhaust', 'neon'];
+const LOW: Category[] = ['gearbox', 'vinyl', 'tune', 'bodykit', 'wheels', 'suspension', 'exhaust', 'neon', 'service', 'smoke', 'character', 'bundle'];
 const MEDIUM: Category[] = ['nick', 'plates', 'engine'];
 const HIGH: Category[] = ['garage', 'account'];
 
@@ -57,6 +64,10 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
   neon: { glyph: 'star', risk: 'low', mediaType: 'photo', escrowOnly: false, requiresModeration: false, label: 'Neon' },
   garage: { glyph: 'globe', risk: 'high', mediaType: 'photo', escrowOnly: true, requiresModeration: true, label: 'RP Garage' },
   account: { glyph: 'user', risk: 'high', mediaType: 'photo', escrowOnly: true, requiresModeration: true, label: 'Account' },
+  service: { glyph: 'shieldcheck', risk: 'low', mediaType: 'photo', escrowOnly: false, requiresModeration: false, label: 'Service liveries' },
+  smoke: { glyph: 'smoke', risk: 'low', mediaType: 'photo', escrowOnly: false, requiresModeration: false, label: 'Smoke' },
+  character: { glyph: 'person', risk: 'low', mediaType: 'photo', escrowOnly: false, requiresModeration: false, label: 'Character' },
+  bundle: { glyph: 'gift', risk: 'low', mediaType: 'photo', escrowOnly: false, requiresModeration: false, label: 'Bundle' },
 };
 
 export const RISK_BY_CATEGORY: Record<Category, RiskLevel> = Object.fromEntries(
@@ -118,5 +129,22 @@ export const PARAM_FIELDS: Record<Category, ParamField[]> = {
   account: [
     { key: 'level', type: 'number', required: true, label: 'Level' },
     { key: 'cars', type: 'list', label: 'Cars' },
+  ],
+  service: [
+    { key: 'model', type: 'text', required: true, label: 'Car model' },
+    { key: 'variant', type: 'text', label: 'Service variant' },
+  ],
+  smoke: [
+    { key: 'model', type: 'text', label: 'Car model' },
+    { key: 'color', type: 'text', label: 'Smoke color' },
+    { key: 'zones', type: 'list', label: 'Zones' },
+  ],
+  character: [
+    { key: 'type', type: 'text', required: true, label: 'Character type' },
+    { key: 'model', type: 'text', label: 'Car model' },
+  ],
+  bundle: [
+    { key: 'contents', type: 'list', required: true, label: 'Bundle contents' },
+    { key: 'discount', type: 'number', label: 'Discount %' },
   ],
 };

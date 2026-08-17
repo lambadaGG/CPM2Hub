@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '../db/index';
-import { products, purchases, topups, users } from '../db/schema';
-import { getUser } from './auth';
+import { products, purchases, topups, users, referralRewards } from '../db/schema';
+import { getUser, type AppEnv } from './auth';
 import { fetchStarTransactions, refundPurchase } from '../lib/stars';
 import { isAdminTelegramId } from '../lib/admin';
 import type { ModerationStatus } from '@gm/shared';
 
-export const adminRoute = new Hono();
+export const adminRoute = new Hono<AppEnv>();
 
 function isAdmin(telegramId: number): boolean {
   return isAdminTelegramId(telegramId);
@@ -156,4 +156,22 @@ adminRoute.get('/admin/pending', async (c) => {
 
   const rows = await db.select().from(products).where(eq(products.moderationStatus, 'pending'));
   return c.json(rows);
+});
+
+adminRoute.get('/admin/referral', async (c) => {
+  const u = getUser(c);
+  if (!isAdmin(u.telegramId)) return c.json({ error: 'forbidden' }, 403);
+
+  const [{ totalUsers }] = await db.select({ totalUsers: sql<number>`count(*)::int` }).from(users);
+  const [{ totalReferred }] = await db.select({ totalReferred: sql<number>`count(*)::int` }).from(users).where(sql`${users.referredBy} is not null`);
+  const [{ totalRewards }] = await db.select({ totalRewards: sql<number>`coalesce(sum(${referralRewards.amountStars}), 0)::int` }).from(referralRewards);
+  const [{ rewardCount }] = await db.select({ rewardCount: sql<number>`count(*)::int` }).from(referralRewards);
+
+  return c.json({
+    totalUsers,
+    totalReferred,
+    totalRewards,
+    rewardCount,
+    referredPercent: totalUsers > 0 ? Math.round(totalReferred / totalUsers * 100) : 0,
+  });
 });

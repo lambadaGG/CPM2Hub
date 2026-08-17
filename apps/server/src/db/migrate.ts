@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import postgres from 'postgres';
-import { readFileSync, readdirSync } from 'node:fs';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,19 +12,14 @@ if (!url) {
   process.exit(1);
 }
 
-const drizzleDir = resolve(__dirname, '../../drizzle');
-const migrations = readdirSync(drizzleDir)
-  .filter((f) => /^\d+_.*\.sql$/.test(f))
-  .sort();
-
 const client = postgres(url, { prepare: false, max: 1, ssl: 'require' });
+const db = drizzle(client);
 
 try {
-  for (const file of migrations) {
-    const ddl = readFileSync(resolve(drizzleDir, file), 'utf8');
-    console.log(`[migrate] applying ${file} ...`);
-    await client.unsafe(ddl);
-  }
+  // Official Drizzle migrator: reads drizzle/meta/_journal.json and applies
+  // each pending *.sql file inside a transaction, recording them in the
+  // __drizzle_migrations journal.
+  await migrate(db, { migrationsFolder: resolve(__dirname, '../../drizzle') });
   console.log('[migrate] ✓ all migrations applied');
 
   const tables = await client`

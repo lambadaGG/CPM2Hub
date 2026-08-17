@@ -5,9 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#0b0b0f" />
     <title>CPM2 HUB</title>
+    <style>
+      html, body, #root { height: 100%; margin: 0; background: #0a0a0a; }
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 999;
+        display: grid; place-items: center;
+        background: #0a0a0a;
+      }
+      #boot-splash img { width: 156px; height: 156px; object-fit: cover; border-radius: 28px; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="boot-splash"><img src="%BASE_URL%splash.png" alt="" draggable="false" /></div>
+    <script type="module" src="%BASE_URL%src/main.tsx"></script>
   </body>
 </html>

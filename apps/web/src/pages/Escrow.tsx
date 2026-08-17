@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getTrades, createTrade, tradeAction } from '../api';
 import type { Trade, TradeStatus } from '../api';
 import { Icon } from '../components/Icons';
@@ -83,8 +83,8 @@ export function Escrow() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [sending, setSending] = useState(false);
 
-  const load = () => getTrades().then(setTrades).catch(() => {});
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => getTrades().then(setTrades).catch(() => {}), []);
+  useEffect(() => { load(); }, [load]);
 
   const submit = async () => {
     if (!offer.trim() || !receive.trim()) return toast(t('escrow.fill'));
@@ -166,7 +166,10 @@ export function Escrow() {
             );
           })
         ) : (
-          <div className="state-empty sm"><Icon id="i-power" className="icon" /><p>{t('escrow.none')}</p></div>
+          <div className="state-empty sm">
+            <div className="glow-icon"><Icon id="i-vault" className="icon" /></div>
+            <p>{t('escrow.none')}</p>
+          </div>
         )}
       </div>
 

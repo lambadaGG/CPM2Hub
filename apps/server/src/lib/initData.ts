@@ -12,6 +12,7 @@ export interface ValidInitData {
   authDate: number;
   userId: number;
   user?: InitDataUser;
+  startParam?: string;
   raw: string;
 }
 
@@ -23,15 +24,18 @@ export function verifyInitData(raw: string, botToken: string): ValidInitData | n
   try {
     validate(raw, botToken, { expiresIn: MAX_AGE_SECONDS });
   } catch (e) {
-    console.warn('[initData] validation failed', {
-      error: e instanceof Error ? e.message : String(e),
-      rawLen: raw.length,
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[initData] validation failed', {
+        error: e instanceof Error ? e.message : String(e),
+        rawLen: raw.length,
+      });
+    }
     return null;
   }
 
   const params = new URLSearchParams(raw);
   const authDate = Number(params.get('auth_date') ?? 0);
+  const startParam = params.get('start_param') ?? undefined;
 
   let user: InitDataUser | undefined;
   const rawUser = params.get('user');
@@ -47,6 +51,7 @@ export function verifyInitData(raw: string, botToken: string): ValidInitData | n
     authDate,
     userId: user?.id ?? 0,
     user,
+    startParam,
     raw,
   };
 }

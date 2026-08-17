@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { and, eq } from 'drizzle-orm';
+import type { Product } from '@gm/shared';
 import { db } from '../db/index';
-import { products, purchases, topups } from '../db/schema';
-import { getUser } from './auth';
+import { dailyClaims, products, purchases, topups } from '../db/schema';
+import { getUser, type AppEnv } from './auth';
 import { productToDto } from './products';
 import { createInvoiceLink, makeBuyPayload, makeTopupPayload } from '../lib/payments';
+import { dailyLivery } from '../lib/gamification';
 
-export const purchasesRoute = new Hono();
+export const purchasesRoute = new Hono<AppEnv>();
 
 purchasesRoute.get('/my/downloads', async (c) => {
   const u = getUser(c);
@@ -16,8 +18,13 @@ purchasesRoute.get('/my/downloads', async (c) => {
     .innerJoin(products, eq(purchases.productId, products.id))
     .where(and(eq(purchases.userId, u.id), eq(purchases.status, 'paid'), eq(purchases.refunded, false)));
 
-  return c.json(
-    rows.map((r) => ({
+  const claims = await db
+    .select()
+    .from(dailyClaims)
+    .where(eq(dailyClaims.userId, u.id));
+
+  const items = [
+    ...rows.map((r) => ({
       id: r.p.id,
       productId: r.p.productId,
       chargeId: r.p.chargeId,
@@ -26,7 +33,36 @@ purchasesRoute.get('/my/downloads', async (c) => {
       createdAt: r.p.createdAt,
       product: productToDto(r.product, { includeConfig: true }),
     })),
-  );
+    ...claims.map((cl) => {
+      const livery = dailyLivery(cl.claimDate);
+      return {
+        id: -cl.id,
+        productId: 0,
+        chargeId: null,
+        amountStars: 0,
+        status: 'paid' as const,
+        createdAt: cl.createdAt,
+        product: {
+          id: 0,
+          slug: `daily-${cl.claimDate}`,
+          category: 'vinyl' as const,
+          title: livery.title,
+          subtitle: `${livery.title} · ${cl.claimDate}`,
+          priceStars: 0,
+          downloads: 0,
+          verified: true,
+          glyph: 'disc',
+          configCode: livery.configCode,
+          active: true,
+          sortOrder: 0,
+          sellerId: null,
+          moderationStatus: 'approved',
+        } satisfies Product,
+      };
+    }),
+  ].sort((a, b) => b.createdAt - a.createdAt);
+
+  return c.json(items);
 });
 
 purchasesRoute.post('/products/:id/buy', async (c) => {

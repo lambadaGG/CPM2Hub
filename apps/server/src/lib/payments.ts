@@ -44,7 +44,11 @@ export async function createInvoiceLink(args: {
 }): Promise<string> {
   const { getBot } = await import('../bot');
   const bot = getBot();
-  return bot.api.createInvoiceLink(args.title, args.description, args.payload, '', 'XTR', [
+  // Telegram limits: title 1-32 chars, description 1-255. Our product titles
+  // allow up to 40 chars, so truncate to keep createInvoiceLink from failing.
+  const title = args.title.slice(0, 32);
+  const description = args.description.slice(0, 255);
+  return bot.api.createInvoiceLink(title, description, args.payload, '', 'XTR', [
     { label: 'Config', amount: args.amountStars },
   ]);
 }

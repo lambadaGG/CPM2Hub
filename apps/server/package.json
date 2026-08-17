@@ -22,9 +22,12 @@
     "drizzle-orm": "^0.45.2",
     "grammy": "^1.38.0",
     "hono": "^4.9.0",
+    "hono-rate-limiter": "^0.5.3",
+    "lru-cache": "^10.4.3",
     "postgres": "^3.4.0"
   },
   "devDependencies": {
+    "@types/lru-cache": "^7.10.9",
     "@types/node": "^24.0.0",
     "drizzle-kit": "^0.31.0",
     "esbuild": "^0.25.12",

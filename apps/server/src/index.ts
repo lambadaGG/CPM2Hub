@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { secureHeaders } from 'hono/secure-headers';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
+import { rateLimiter } from 'hono-rate-limiter';
 import { webhookCallback } from 'grammy';
-import { auth } from './routes/auth';
+import { auth, type AppEnv } from './routes/auth';
 import { meRoute } from './routes/me';
 import { productsRoute } from './routes/products';
 import { purchasesRoute } from './routes/purchases';
@@ -12,19 +16,49 @@ import { adminRoute } from './routes/admin';
 import { avatarRoute } from './routes/avatar';
 import { getBot, setupWebhook, setBotCommands, WEBHOOK_SECRET } from './bot';
 import { reconcileStars } from './lib/stars';
+import { closeDb } from './db/index';
 
-const app = new Hono();
+const app = new Hono<AppEnv>();
+
+app.use('*', secureHeaders({ crossOriginResourcePolicy: false }));
 
 app.use(
   '/api/*',
   cors({
-    origin: ['https://web.telegram.org', process.env.WEBAPP_URL ?? ''],
+    origin: ['https://web.telegram.org', process.env.WEBAPP_URL ?? ''].filter(Boolean),
     allowHeaders: ['Content-Type', 'X-Init-Data'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
 
+app.use('/api/*', bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: 'too_large' }, 413) }));
+
+app.use(
+  '/api/*',
+  rateLimiter({
+    windowMs: 60_000,
+    limit: 60,
+    keyGenerator: (c) => c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown',
+  }),
+);
+
 app.use('/api/*', auth);
+
+// grammY webhookCallback rethrows middleware errors (bot.catch only runs in
+// polling mode). Log them here — Telegram will retry the update, and our
+// payment handlers are idempotent, so a retry is safe.
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
+  const url = c.req.path;
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[api] unhandled error on ${url}:`, err instanceof Error ? err.message : err);
+  } else {
+    console.error(`[api] unhandled error on ${url}:`, err instanceof Error ? err.stack ?? err : err);
+  }
+  return c.json({ error: 'internal_error' }, 500);
+});
+
+app.notFound((c) => c.json({ error: 'not_found' }, 404));
 
 app.route('/api', meRoute);
 app.route('/api', productsRoute);
@@ -64,9 +98,24 @@ async function main() {
   }
 
   const port = Number(process.env.PORT ?? 8080);
-  serve({ fetch: app.fetch, port }, (info) => {
+  const server = serve({ fetch: app.fetch, port }, (info) => {
     console.log(`[api] listening on http://localhost:${info.port}`);
   });
+
+  async function shutdown(signal: string) {
+    console.log(`[api] ${signal} received — shutting down`);
+    try {
+      server.close();
+    } catch { /* ignore */ }
+    try {
+      await closeDb();
+    } catch (err) {
+      console.error('[api] failed to close db', err);
+    }
+    process.exit(0);
+  }
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 
   if (bot) {
     setInterval(() => {

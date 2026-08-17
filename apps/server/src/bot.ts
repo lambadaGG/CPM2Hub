@@ -12,6 +12,8 @@ let bot: Bot | null = null;
 // Secret token for webhook verification — задать в env WEBHOOK_SECRET
 export const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET ?? '').trim();
 
+const processedPreCheckout = new Set<string>();
+
 const SUPPORT_LINK = 'https://t.me/CPM2Hub_Support';
 const ANNOUNCEMENTS_LINK = 'https://t.me/CPM2Hub_Announcements';
 const COMMUNITY_LINK = 'https://t.me/CPM2Hub_Community';
@@ -34,7 +36,13 @@ export async function setupWebhook(bot: Bot): Promise<void> {
   // Добавляем https:// если не задано
   const webhookUrl = url.startsWith('https://') ? url : `https://${url}`;
   await bot.api.setWebhook(`${webhookUrl}/webhook`, {
-    secret_token: WEBHOOK_SECRET,
+    // Skip the secret when unset — Telegram rejects an empty (1-256 chars) token.
+    secret_token: WEBHOOK_SECRET || undefined,
+    // We only handle these update types; anything else is noise on the wire.
+    allowed_updates: ['message', 'callback_query', 'pre_checkout_query'],
+    // Drop stale pending updates on boot; missed payments are recovered by the
+    // reconcileStars loop, so nothing is lost.
+    drop_pending_updates: true,
   });
 }
 
@@ -49,13 +57,14 @@ export async function setBotCommands(bot: Bot): Promise<void> {
 
 function registerHandlers(b: Bot) {
   b.command('start', async (ctx) => {
-    const webAppUrl = process.env.WEBAPP_URL;
+    const webAppUrl = process.env.WEBAPP_URL ?? '';
+    const openButton = webAppUrl ? [{ text: 'Open GearMarket', web_app: { url: webAppUrl } }] : [];
     await ctx.reply(
       `🏁 GearMarket\n\nDark marketplace for tuning configs: gearboxes, vinyl presets, nicknames.\n\nPayments in Telegram Stars.`,
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: 'Open GearMarket', web_app: { url: webAppUrl ?? '' } }],
+            ...(openButton.length > 0 ? [openButton] : []),
             [{ text: '📢 Announcements', url: ANNOUNCEMENTS_LINK }],
             [{ text: '💬 Community Chat', url: COMMUNITY_LINK }],
             [{ text: '🆘 Support', url: SUPPORT_LINK }],
@@ -87,11 +96,16 @@ function registerHandlers(b: Bot) {
   });
 
   b.on('pre_checkout_query', async (ctx) => {
-    const payload = ctx.preCheckoutQuery.invoice_payload;
+    const q = ctx.preCheckoutQuery;
+    if (processedPreCheckout.has(q.id)) return;
+    processedPreCheckout.add(q.id);
+    setTimeout(() => processedPreCheckout.delete(q.id), 300_000);
+
+    const payload = q.invoice_payload;
 
     const topup = parseTopupPayload(payload);
     if (topup) {
-      if (ctx.preCheckoutQuery.total_amount !== topup.amountStars) {
+      if (q.total_amount !== topup.amountStars) {
         await ctx.answerPreCheckoutQuery(false, 'Amount mismatch');
         return;
       }
@@ -115,9 +129,13 @@ function registerHandlers(b: Bot) {
     const [pending] = await db
       .select()
       .from(purchases)
-      .where(eq(purchases.payload, ctx.preCheckoutQuery.invoice_payload));
+      .where(eq(purchases.payload, payload));
     if (!pending || pending.status !== 'pending') {
       await ctx.answerPreCheckoutQuery(false, 'Order not found');
+      return;
+    }
+    if (q.total_amount !== pending.amountStars) {
+      await ctx.answerPreCheckoutQuery(false, 'Amount mismatch');
       return;
     }
     await ctx.answerPreCheckoutQuery(true);

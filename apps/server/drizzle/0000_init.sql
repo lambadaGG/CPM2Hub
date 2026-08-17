@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "credits_stars" INTEGER NOT NULL DEFAULT 0,
   "created_at" BIGINT NOT NULL
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "users_telegram_id_idx" ON "users" ("telegram_id");
 
 -- PRODUCTS
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS "products" (
   "active" BOOLEAN NOT NULL DEFAULT TRUE,
   "sort_order" INTEGER NOT NULL DEFAULT 0
 );
+--> statement-breakpoint
 
 -- PURCHASES
 CREATE TABLE IF NOT EXISTS "purchases" (
@@ -40,8 +42,11 @@ CREATE TABLE IF NOT EXISTS "purchases" (
   "status" TEXT NOT NULL DEFAULT 'pending',
   "created_at" BIGINT NOT NULL
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "purchases_user_idx" ON "purchases" ("user_id");
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "purchases_charge_idx" ON "purchases" ("charge_id");
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "purchases_payload_idx" ON "purchases" ("payload");
 
 -- TRADES
@@ -55,6 +60,7 @@ CREATE TABLE IF NOT EXISTS "trades" (
   "status" TEXT NOT NULL DEFAULT 'waiting',
   "created_at" BIGINT NOT NULL
 );
+--> statement-breakpoint
 
 -- Drizzle journal marker
 CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (

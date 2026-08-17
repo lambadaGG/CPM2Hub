@@ -38,6 +38,9 @@ export interface Product {
   serverName?: string | null;
   params?: Params;
   moderationStatus: ModerationStatus;
+  rating?: { avg: number; count: number };
+  wishlisted?: boolean;
+  guideUrl?: string | null;
 }
 
 export interface CreateProductRequest {
@@ -49,6 +52,7 @@ export interface CreateProductRequest {
   media?: ProductMedia;
   serverName?: string;
   params?: Params;
+  guideUrl?: string;
 }
 
 export interface PatchProductRequest {
@@ -60,6 +64,7 @@ export interface PatchProductRequest {
   media?: ProductMedia;
   serverName?: string;
   params?: Params;
+  guideUrl?: string;
 }
 
 export interface PayResponse {
@@ -78,6 +83,22 @@ export interface User {
   creditsStars: number;
   creditsTn: number;
   createdAt: number;
+  referralCode?: string;
+  streak?: number;
+  dailyClaimed?: boolean;
+}
+
+export interface DailyClaimResponse {
+  streak: number;
+  rewardStars: number;
+  bonusStars: number;
+  configCode: string;
+  configTitle: string;
+}
+
+export interface RateResponse {
+  rating: { avg: number; count: number };
+  value: number;
 }
 
 export interface Purchase {
@@ -110,6 +131,12 @@ export interface MeResponse {
   purchasesCount: number;
   totalSpent: number;
   isAdmin: boolean;
+  referralCode: string;
+  referralCount: number;
+  streak: number;
+  dailyClaimed: boolean;
+  /** Last 7 days (oldest → today) with per-day claim status for the streak widget. */
+  week: Array<{ date: string; claimed: boolean }>;
 }
 
 export interface BuyResponse {

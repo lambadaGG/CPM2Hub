@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import { and, desc, eq, or } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '../db/index';
 import { trades, users } from '../db/schema';
-import { getUser } from './auth';
+import { getUser, type AppEnv } from './auth';
 import { actTrade, canAct, notifyTrade, roleFor, type TradeAction, type TradeRow } from '../lib/escrow';
 
-export const tradesRoute = new Hono();
+export const tradesRoute = new Hono<AppEnv>();
 
 const KINDS: TradeRow['kind'][] = ['money', 'car', 'vinyl'];
 const ACTIONS: TradeAction[] = ['accept', 'decline', 'cancel', 'complete', 'dispute'];
@@ -61,7 +61,9 @@ tradesRoute.post('/trades', async (c) => {
     return c.json({ error: 'field_too_long' }, 400);
   }
 
-  const [peerUser] = await db.select().from(users).where(eq(users.username, peer));
+  // Telegram usernames are case-insensitive; the input was lowercased, so
+  // match case-insensitively against the stored value.
+  const [peerUser] = await db.select().from(users).where(sql`lower(${users.username}) = ${peer}`);
   if (!peerUser) return c.json({ error: 'peer_not_found' }, 400);
   if (peerUser.id === u.id) return c.json({ error: 'self_trade' }, 400);
 

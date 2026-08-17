@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import { eq } from 'drizzle-orm';
 import { db, isDbConfigured } from './index';
 import { products } from './schema';
 
@@ -49,16 +48,113 @@ const seed: Array<typeof products.$inferInsert> = [
     configCode: 'NICK1=『ACE』王;NICK2=ACE_777;NICK3=ÆCE',
     sortOrder: 4,
   },
+  {
+    slug: 'police-cruiser-skin',
+    category: 'service',
+    title: 'Police Cruiser',
+    subtitle: 'Patrol mode skin · R34',
+    priceStars: 8,
+    glyph: 'shieldcheck',
+    configCode: 'VINYL=police_cruiser;BASE=#1C1C1E;STRIPE=#FFFFFF;LIGHT=#2AABEE',
+    sortOrder: 5,
+    params: { model: 'R34', variant: 'Patrol' },
+  },
+  {
+    slug: 'taxi-yellow-skin',
+    category: 'service',
+    title: 'Taxi Yellow',
+    subtitle: 'Street mode skin · R34',
+    priceStars: 8,
+    glyph: 'shieldcheck',
+    configCode: 'VINYL=taxi_yellow;BASE=#FFD60A;STRIPE=#111111;LIGHT=#FFFFFF',
+    sortOrder: 6,
+    params: { model: 'R34', variant: 'Street' },
+  },
+  {
+    slug: 'starter-pack',
+    category: 'bundle',
+    title: 'Starter Pack',
+    subtitle: 'Garage + Sound + Plate',
+    priceStars: 25,
+    glyph: 'gift',
+    configCode: 'BUNDLE=starter;GARAGE=2slot_garage;SOUND=burble_turbo;PLATE=CUSTOM1',
+    sortOrder: 7,
+    params: { contents: ['Garage preset', 'Turbo sound', 'Custom plate'], discount: 40 },
+  },
+  {
+    slug: 'r34-drift-kit',
+    category: 'suspension',
+    title: 'Drift Angle Kit',
+    subtitle: 'R34 · camber −3.5°',
+    priceStars: 9,
+    glyph: 'tools',
+    configCode: 'FRONT_CAMBER=-3.5;REAR_CAMBER=-2.0;FRONT_TOE=0.2;RIDE=0.8;LOCK=2.0',
+    sortOrder: 8,
+    params: { style: 'Drift', model: 'R34', camber: -3.5 },
+  },
+  {
+    slug: 'v8-burble-turbo',
+    category: 'exhaust',
+    title: 'V8 Burble + Turbo',
+    subtitle: 'Exhaust sound · MK4',
+    priceStars: 7,
+    glyph: 'zap',
+    configCode: 'SOUND=burble_turbo;VOLUME=0.9;PITCH=1.1;ANTI_LAG=on',
+    sortOrder: 9,
+    params: { soundType: 'Burble + Turbo', model: 'MK4' },
+  },
+  {
+    slug: 'custom-plate-r34z',
+    category: 'plates',
+    title: 'Custom Plate 「R34Z」',
+    subtitle: 'Japan style',
+    priceStars: 3,
+    glyph: 'type',
+    configCode: 'PLATE=R34Z;REGION=JP;STYLE=japan',
+    sortOrder: 10,
+    params: { plateText: 'R34Z', region: 'JP', style: 'Japan' },
+  },
+  {
+    slug: 'midnight-neon-kit',
+    category: 'neon',
+    title: 'Midnight Neon Kit',
+    subtitle: 'R34 · underglow 4 zones',
+    priceStars: 6,
+    glyph: 'star',
+    configCode: 'NEON=midnight;BASE=#6A3DB0;ANIM=flow;ZONES=front,rear,side_l,side_r',
+    sortOrder: 11,
+    params: { colorScheme: 'Midnight Purple', zones: ['front', 'rear', 'side_l', 'side_r'], animation: 'Flow' },
+  },
+  {
+    slug: 'smoke-white-exit',
+    category: 'smoke',
+    title: 'White Smoke Exhaust',
+    subtitle: 'Cold start · white cloud',
+    priceStars: 5,
+    glyph: 'smoke',
+    configCode: 'SMOKE=white;ZONES=dual;DENSITY=high;COLOR=#F2F2F2',
+    sortOrder: 12,
+    params: { model: 'R34', color: 'White', zones: ['dual'] },
+  },
+  {
+    slug: 'ninja-driver-skin',
+    category: 'character',
+    title: 'Ninja Driver',
+    subtitle: 'Stealth character skin',
+    priceStars: 11,
+    glyph: 'person',
+    configCode: 'CHAR=ninja;OUTFIT=black_shadow;MODEL=R34',
+    sortOrder: 13,
+    params: { type: 'Ninja', model: 'R34' },
+  },
 ];
 
-let inserted = 0;
-for (const row of seed) {
-  const existing = await db.select().from(products).where(eq(products.slug, row.slug!));
-  if (existing.length > 0) continue;
-  await db.insert(products).values(row);
-  inserted++;
-}
+const inserted = await db
+  .insert(products)
+  .values(seed)
+  .onConflictDoNothing({ target: products.slug })
+  .returning({ id: products.id, slug: products.slug });
 
 const all = await db.select().from(products);
-console.log(`Seed done. inserted=${inserted} total=${all.length}`);
+console.log(`Seed done. inserted=${inserted.length} total=${all.length}`);
 process.exit(0);

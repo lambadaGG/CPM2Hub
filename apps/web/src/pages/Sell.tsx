@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createProduct, deleteProduct, getMyProducts, patchProduct, PARAM_FIELDS, SELL_CATEGORIES, CATEGORY_META } from '../api';
 import type { Params, Product, SellCategory } from '../api';
 import { Icon } from '../components/Icons';
@@ -28,6 +28,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
   const [serverName, setServerName] = useState('');
   const [params, setParams] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<number | null>(null);
+  const [guideUrl, setGuideUrl] = useState('');
   const [busy, setBusy] = useState(false);
 
   const meta = CATEGORY_META[category];
@@ -45,8 +46,8 @@ export function Sell({ onBack }: { onBack: () => void }) {
     return map[mediaType] ?? [];
   }, [mediaType]);
 
-  const load = () => getMyProducts().then(setListings).catch(() => {});
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => getMyProducts().then(setListings).catch(() => {}), []);
+  useEffect(() => { load(); }, [load]);
 
   const reset = () => {
     setEditId(null);
@@ -57,6 +58,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
     setMedia({});
     setServerName('');
     setParams({});
+    setGuideUrl('');
   };
 
   const changeCategory = (c: SellCategory) => {
@@ -103,6 +105,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
         media: mediaObj,
         serverName: serverName.trim() || undefined,
         params: p,
+        guideUrl: guideUrl.trim() || undefined,
       };
       if (editId != null) {
         await patchProduct(editId, common);
@@ -127,6 +130,7 @@ export function Sell({ onBack }: { onBack: () => void }) {
     setPrice(String(p.priceStars));
     setCode(p.configCode ?? '');
     setCategory((p.category as SellCategory) ?? 'gearbox');
+    setGuideUrl(p.guideUrl ?? '');
     setMedia({
       ...(p.media?.previewUrl ? { previewUrl: p.media.previewUrl } : {}),
       ...(p.media?.videoUrl ? { videoUrl: p.media.videoUrl } : {}),
@@ -236,6 +240,11 @@ export function Sell({ onBack }: { onBack: () => void }) {
             ))}
           </div>
         )}
+
+        <div className="sell-section">
+          <div className="sell-section-title">{t('sell.guide')}</div>
+          <input className="text-input" placeholder={t('sell.guidePh')} value={guideUrl} onChange={(e) => setGuideUrl(e.target.value)} maxLength={255} />
+        </div>
 
         <div className="sell-form-actions">
           <button className="primary-btn" onClick={submit} disabled={busy}>

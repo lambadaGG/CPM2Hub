@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { BuyRequest, BuyResponse, Category, CreateProductRequest, MeResponse, ModerationStatus, Params, PatchProductRequest, PayResponse, Product, ProductMedia, Purchase, Trade } from '@gm/shared';
+import type { BuyRequest, BuyResponse, Category, CreateProductRequest, DailyClaimResponse, MeResponse, ModerationStatus, Params, PatchProductRequest, PayResponse, Product, ProductMedia, Purchase, RateResponse, Trade } from '@gm/shared';
 
 export { api } from './client';
 export type {
@@ -7,6 +7,7 @@ export type {
   BuyResponse,
   Category,
   CreateProductRequest,
+  DailyClaimResponse,
   MeResponse,
   ModerationStatus,
   Params,
@@ -15,18 +16,47 @@ export type {
   Product,
   ProductMedia,
   Purchase,
+  RateResponse,
   SellCategory,
   SellerInfo,
   Trade,
   TradeStatus,
   User,
 } from '@gm/shared';
-export { ALL_CATEGORIES, CATEGORY_META, PARAM_FIELDS, RISK_BY_CATEGORY, SELL_CATEGORIES } from '@gm/shared';
+export { ALL_CATEGORIES, CATEGORY_META, NEW_CATEGORIES, PARAM_FIELDS, RISK_BY_CATEGORY, SELL_CATEGORIES } from '@gm/shared';
 
 export const getMe = () => api<MeResponse>('/me');
+export const getReferral = () => api<{ code: string; link: string; count: number; rewardStars: number; totalEarned: number }>('/me/referral');
+export const getReferralList = () => api<{ users: ReferralUser[]; totalEarned: number }>('/me/referral/list');
+export const getReferralLeaderboard = () => api<{ leaderboard: ReferralLeaderboardEntry[] }>('/me/referral/leaderboard');
+export const claimDaily = () => api<{ claim: DailyClaimResponse }>('/me/claim-daily', { method: 'POST' });
 export const getProducts = (category?: Category) =>
   api<Product[]>(category ? `/products?category=${category}` : '/products');
 export const getMyProducts = () => api<Product[]>('/products/mine');
+
+// Home-page data prefetched during the splash screen so the market renders
+// instantly on first open instead of waiting for a spinner.
+interface PreloadData {
+  me: MeResponse | null;
+  products: Product[] | null;
+}
+
+let preloadCache: PreloadData = { me: null, products: null };
+
+export async function preloadHome(): Promise<void> {
+  try {
+    const [me, products] = await Promise.all([getMe(), getProducts()]);
+    preloadCache = { me, products };
+  } catch {
+    /* ignore — Market will fetch normally */
+  }
+}
+
+export function takePreloaded(): PreloadData {
+  const data = preloadCache;
+  preloadCache = { me: null, products: null };
+  return data;
+}
 export const createProduct = (body: CreateProductRequest) =>
   api<Product>('/products', { method: 'POST', body: JSON.stringify(body) });
 export const patchProduct = (id: number, body: PatchProductRequest) =>
@@ -35,6 +65,10 @@ export const deleteProduct = (id: number) =>
   api<{ ok: boolean }>(`/products/${id}`, { method: 'DELETE' });
 export const payProduct = (id: number) =>
   api<PayResponse>(`/products/${id}/pay`, { method: 'POST' });
+export const rateProduct = (id: number, value: number) =>
+  api<RateResponse>(`/products/${id}/rate`, { method: 'POST', body: JSON.stringify({ value }) });
+export const toggleWishlist = (id: number) =>
+  api<{ wishlisted: boolean }>(`/products/${id}/wishlist`, { method: 'POST' });
 export const getDownloads = () => api<Purchase[]>('/my/downloads');
 export const getTrades = () => api<Trade[]>('/trades');
 export const createTrade = (body: { kind: string; offer: string; receive: string; peer: string }) =>
@@ -72,3 +106,25 @@ export const adminRefund = (purchaseId: number) =>
   api<{ ok: boolean; purchaseId: number }>('/admin/refund', { method: 'POST', body: JSON.stringify({ purchaseId }) });
 export const adminGrant = (telegramId: number, credits: { stars?: number; tn?: number }) =>
   api<{ ok: boolean; telegramId: number; creditsStars: number; creditsTn: number }>('/admin/grant', { method: 'POST', body: JSON.stringify({ telegramId, ...credits }) });
+
+export interface ReferralUser {
+  id: number;
+  firstName: string;
+  username: string | null;
+  telegramId: number;
+  joinedAt: number;
+  earned: number;
+  purchases: number;
+}
+
+export interface ReferralLeaderboardEntry {
+  rank: number;
+  id: number;
+  firstName: string;
+  username: string | null;
+  telegramId: number;
+  totalEarned: number;
+  purchases: number;
+}
+
+export const getAdminReferral = () => api<{ totalUsers: number; totalReferred: number; totalRewards: number; rewardCount: number; referredPercent: number }>('/admin/referral');

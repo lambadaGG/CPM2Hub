@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { openInvoice, openTelegramLink } from '@telegram-apps/sdk';
-import { getDownloads, getMe, getTrades, topupStars } from '../api';
-import type { Purchase, Trade, User } from '../api';
+import { claimDaily, getDownloads, getMe, getReferral, getReferralList, getReferralLeaderboard, getTrades, topupStars } from '../api';
+import type { Purchase, ReferralLeaderboardEntry, ReferralUser, Trade, User } from '../api';
 import { ConfigModal } from '../components/ConfigModal';
 import { Icon } from '../components/Icons';
 import { useToast } from '../components/Toast';
 import { Avatar } from '../components/Avatar';
+import { AvatarBadge } from '../components/AvatarBadge';
 import { useI18n, type Lang } from '../i18n';
-import { downloadText, fmtCompact, fmtDateTime } from '../utils';
+import { copyText, downloadText, fmtCompact, fmtDateTime } from '../utils';
 
 const TRADE_KIND: Record<Trade['kind'], string> = {
   money: 'escrow.kind.money',
@@ -134,27 +135,84 @@ function HistoryLog({ downloads, trades }: { downloads: Purchase[]; trades: Trad
   );
 }
 
-const LANG_LABEL: Record<Lang, string> = { ru: 'Русский', en: 'English' };
+const LANG_LABEL: Record<Lang, string> = { ru: 'Русский', en: 'English', id: 'Indonesia', ms: 'Melayu', tr: 'Türkçe' };
+
+const fmtWeekday = (lang: Lang, date: string) =>
+  new Intl.DateTimeFormat(lang === 'ru' ? 'ru' : 'en', { weekday: lang === 'ru' ? 'short' : 'narrow' }).format(new Date(`${date}T00:00:00`));
+
+const fmtDayNum = (date: string) => new Date(`${date}T00:00:00`).getDate();
 
 export function Profile({ user: initial, active }: { user: User | null; active?: boolean }) {
   const [me, setMe] = useState<User | null>(initial);
   const [downloads, setDownloads] = useState<Purchase[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [week, setWeek] = useState<Awaited<ReturnType<typeof getMe>>['week']>([]);
+  const [refCount, setRefCount] = useState(0);
+  const [refTotalEarned, setRefTotalEarned] = useState(0);
+  const [refUsers, setRefUsers] = useState<ReferralUser[]>([]);
+  const [refLeaderboard, setRefLeaderboard] = useState<ReferralLeaderboardEntry[]>([]);
+  const [refTab, setRefTab] = useState<'list' | 'leaderboard'>('list');
   const [openItem, setOpenItem] = useState<Purchase | null>(null);
   const toast = useToast();
   const { t, lang, setLang } = useI18n();
 
-  const load = () => {
-    getMe().then((r) => setMe(r.user)).catch(() => {});
+  const load = useCallback(() => {
+    getMe().then((r) => {
+      setMe(r.user);
+      setStreak(r.streak ?? 0);
+      setDailyClaimed(r.dailyClaimed ?? false);
+      setWeek(r.week ?? []);
+      setRefCount(r.referralCount ?? 0);
+    }).catch(() => {});
+    getReferral().then((r) => {
+      setRefTotalEarned(r.totalEarned);
+    }).catch(() => {});
+    getReferralList().then((r) => {
+      setRefUsers(r.users);
+    }).catch(() => {});
+    getReferralLeaderboard().then((r) => {
+      setRefLeaderboard(r.leaderboard);
+    }).catch(() => {});
     getDownloads().then(setDownloads).catch(() => {});
     getTrades().then(setTrades).catch(() => {});
-  };
+  }, []);
 
   useEffect(() => {
     if (active !== false) load();
-  }, [active]);
+  }, [active, load]);
 
   const u = me ?? initial;
+  const tillBonus = streak % 7 === 0 ? 7 : 7 - (streak % 7);
+
+  const claim = async () => {
+    if (dailyClaimed) return;
+    try {
+      const res = await claimDaily();
+      if (res.claim) {
+        setDailyClaimed(true);
+        setStreak(res.claim.streak);
+        setWeek((w) => (w.length ? w.map((d, i) => (i === w.length - 1 ? { ...d, claimed: true } : d)) : w));
+        await copyText(res.claim.configCode);
+        toast(t('market.daily.toast'));
+        getMe().then((r) => { setMe(r.user); setRefCount(r.referralCount ?? 0); }).catch(() => {});
+        getDownloads().then(setDownloads).catch(() => {});
+      }
+    } catch (e) {
+      toast(t('market.daily.err'));
+    }
+  };
+
+  const copyReferral = async () => {
+    try {
+      const r = await getReferral();
+      if (r.link) {
+        await copyText(r.link);
+        toast(t('market.copied'));
+      }
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className="screen profile">
@@ -166,7 +224,9 @@ export function Profile({ user: initial, active }: { user: User | null; active?:
       </header>
 
       <div className="profile-hero">
-        <Avatar className="ph-avatar" telegramId={u?.telegramId} name={u?.firstName} />
+        <AvatarBadge size={70} tier="free">
+          <Avatar className="ab-photo" telegramId={u?.telegramId} name={u?.firstName} />
+        </AvatarBadge>
         <div className="ph-info">
           <h1>{u ? u.firstName : 'User'}</h1>
           <p>@{u?.username || '—'} · ID {u ? String(u.telegramId).slice(0, 8) : '—'}</p>
@@ -177,6 +237,101 @@ export function Profile({ user: initial, active }: { user: User | null; active?:
         <div className="stat"><span className="st-label">{t('profile.stars')}</span><span className="st-val">{fmtCompact(u?.creditsStars ?? 0)}</span></div>
         <div className="stat"><span className="st-label">{t('profile.tn')}</span><span className="st-val">{fmtCompact(u?.creditsTn ?? 0)}</span></div>
         <div className="stat"><span className="st-label">{t('profile.downloaded')}</span><span className="st-val">{downloads.length.toString().padStart(2, '0')}</span></div>
+      </div>
+
+      <div className="daily">
+        <div className="d-badge">
+          <Icon id="i-disc" className="icon" />
+          {streak > 0 && <span className="dot">{streak}</span>}
+        </div>
+        <div className="d-txt">
+          <div className="eyb">{t('profile.daily.eyb')}</div>
+          <h3>{t('profile.daily.title')}</h3>
+          <span>{t('profile.daily.sub')} · {t('profile.streak.label')}: {streak} {t('profile.days')} · {t('profile.bonus')}</span>
+        </div>
+        <button className={`d-btn${dailyClaimed ? ' claimed' : ''}`} onClick={claim} disabled={dailyClaimed}>
+          {dailyClaimed ? t('profile.daily.claimed') : t('profile.daily.claim')}
+        </button>
+      </div>
+
+      {week.length > 0 && (
+        <div className="streak-card">
+          <div className="streak-head">
+            <span className="eyb">{t('profile.streak.eyb')}</span>
+            <span className="streak-count"><Icon id="i-fire" className="icon" />{streak} {t('profile.days')}</span>
+          </div>
+          <div className="streak-week" role="list" aria-label={t('profile.streak.eyb')}>
+            {week.map((d, i) => {
+              const isToday = i === week.length - 1;
+              return (
+                <div key={d.date} className={`sday${d.claimed ? ' on' : ''}${isToday ? ' today' : ''}`} role="listitem">
+                  <span className="sday-c">{fmtDayNum(d.date)}</span>
+                  <span className="sday-lbl">{fmtWeekday(lang, d.date)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="streak-meta">
+            <span className="streak-till">{t('profile.streak.next')} {tillBonus} {t('profile.days')} · {t('profile.bonus')}</span>
+            <span className="streak-hint">{t('profile.streak.rewards')}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <h2 className="card-title">{t('profile.referral.title')}</h2>
+        <p className="topup-sub">{t('profile.referral.sub')} · {refCount} {t('profile.referral.invited')} · {refTotalEarned}★ {t('profile.referral.earned')}</p>
+        <button className="primary-btn wide" onClick={copyReferral}>
+          <Icon id="i-gift" className="icon" />
+          {t('profile.referral.link')}
+        </button>
+
+        {refCount > 0 && (
+          <div className="referral-tabs" style={{ marginTop: '1rem' }}>
+            <button className={`ref-tab${refTab === 'list' ? ' active' : ''}`} onClick={() => setRefTab('list')}>
+              {t('profile.referral.tabList')} ({refCount})
+            </button>
+            <button className={`ref-tab${refTab === 'leaderboard' ? ' active' : ''}`} onClick={() => setRefTab('leaderboard')}>
+              {t('profile.referral.tabLeaderboard')}
+            </button>
+          </div>
+        )}
+
+        {refTab === 'list' && refUsers.length > 0 && (
+          <div className="referral-list">
+            {refUsers.map((u) => (
+              <div key={u.id} className="ref-user">
+                <Avatar className="ref-avatar" telegramId={u.telegramId} name={u.firstName} />
+                <div className="ref-info">
+                  <span className="ref-name">{u.firstName}{u.username ? ` @${u.username}` : ''}</span>
+                  <span className="ref-meta">{u.purchases} {t('profile.referral.purchases')} · +{u.earned}★</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {refTab === 'leaderboard' && refLeaderboard.length > 0 && (
+          <div className="referral-list">
+            {refLeaderboard.map((e) => (
+              <div key={e.id} className="ref-user">
+                <span className="ref-rank">#{e.rank}</span>
+                <Avatar className="ref-avatar" telegramId={e.telegramId} name={e.firstName} />
+                <div className="ref-info">
+                  <span className="ref-name">{e.firstName}{e.username ? ` @${e.username}` : ''}</span>
+                  <span className="ref-meta">{e.purchases} {t('profile.referral.purchases')} · +{e.totalEarned}★</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {refTab === 'list' && refCount > 0 && refUsers.length === 0 && (
+          <div className="state-empty sm" style={{ marginTop: '0.5rem' }}>
+            <Icon id="i-hourglass" className="icon" />
+            <p>{t('profile.referral.noData')}</p>
+          </div>
+        )}
       </div>
 
       <SubCard />
@@ -223,7 +378,9 @@ export function Profile({ user: initial, active }: { user: User | null; active?:
             <span>{t('profile.botSupport')}</span>
           </button>
           <button className="set-grid-item" onClick={() => {
-            const next: Lang = lang === 'ru' ? 'en' : 'ru';
+            const langs: Lang[] = ['en', 'ru', 'id', 'ms', 'tr'];
+            const idx = langs.indexOf(lang);
+            const next = langs[(idx + 1) % langs.length];
             setLang(next);
             toast(LANG_LABEL[next]);
           }}>

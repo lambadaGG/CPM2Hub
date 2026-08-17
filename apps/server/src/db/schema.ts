@@ -1,4 +1,5 @@
 import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex, jsonb } from 'drizzle-orm/pg-core';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 export const users = pgTable(
   'users',
@@ -10,9 +11,16 @@ export const users = pgTable(
     language: text('language'),
     creditsStars: integer('credits_stars').notNull().default(0),
     creditsTn: integer('credits_tn').notNull().default(0),
+    referralCode: text('referral_code'),
+    referredBy: integer('referred_by').references((): AnyPgColumn => users.id),
+    streak: integer('streak').notNull().default(0),
+    lastClaimAt: bigint('last_claim_at', { mode: 'number' }),
     createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   },
-  (t) => [uniqueIndex('users_telegram_id_idx').on(t.telegramId)],
+  (t) => [
+    uniqueIndex('users_telegram_id_idx').on(t.telegramId),
+    uniqueIndex('users_referral_code_idx').on(t.referralCode),
+  ],
 );
 
 export const products = pgTable('products', {
@@ -22,6 +30,7 @@ export const products = pgTable('products', {
     enum: [
       'gearbox', 'vinyl', 'tune', 'nick', 'bodykit', 'wheels', 'engine',
       'suspension', 'plates', 'exhaust', 'neon', 'garage', 'account',
+      'service', 'smoke', 'character', 'bundle',
     ],
   }).notNull(),
   title: text('title').notNull(),
@@ -45,7 +54,10 @@ export const products = pgTable('products', {
   moderationStatus: text('moderation_status', { enum: ['pending', 'approved', 'rejected'] })
     .notNull()
     .default('approved'),
-});
+  guideUrl: text('guide_url'),
+}, (t) => [
+  index('products_seller_idx').on(t.sellerId),
+]);
 
 export const purchases = pgTable(
   'purchases',
@@ -86,7 +98,10 @@ export const trades = pgTable('trades', {
     .default('waiting'),
   createdAt: bigint('created_at', { mode: 'number' }).notNull(),
   updatedAt: bigint('updated_at', { mode: 'number' }).notNull().default(0),
-});
+}, (t) => [
+  index('trades_creator_idx').on(t.creatorId),
+  index('trades_peer_user_idx').on(t.peerUserId),
+]);
 
 export const topups = pgTable(
   'topups',
@@ -105,5 +120,83 @@ export const topups = pgTable(
     index('topups_user_idx').on(t.userId),
     uniqueIndex('topups_charge_idx').on(t.chargeId),
     uniqueIndex('topups_payload_idx').on(t.payload),
+  ],
+);
+
+export const productRatings = pgTable(
+  'product_ratings',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id),
+    value: integer('value').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('ratings_user_product_idx').on(t.userId, t.productId),
+    index('ratings_user_idx').on(t.userId),
+    index('ratings_product_idx').on(t.productId),
+  ],
+);
+
+export const wishlist = pgTable(
+  'wishlist',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('wishlist_user_product_idx').on(t.userId, t.productId),
+  ],
+);
+
+export const dailyClaims = pgTable(
+  'daily_claims',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    claimDate: text('claim_date').notNull(),
+    streak: integer('streak').notNull().default(1),
+    rewardStars: integer('reward_stars').notNull().default(0),
+    bonusStars: integer('bonus_stars').notNull().default(0),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('daily_claims_user_date_idx').on(t.userId, t.claimDate),
+  ],
+);
+
+export const referralRewards = pgTable(
+  'referral_rewards',
+  {
+    id: serial('id').primaryKey(),
+    referrerId: integer('referrer_id')
+      .notNull()
+      .references(() => users.id),
+    buyerId: integer('buyer_id')
+      .notNull()
+      .references(() => users.id),
+    purchaseId: integer('purchase_id')
+      .notNull()
+      .references(() => purchases.id),
+    amountStars: integer('amount_stars').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    index('referral_rewards_referrer_idx').on(t.referrerId),
+    index('referral_rewards_buyer_idx').on(t.buyerId),
+    uniqueIndex('referral_rewards_purchase_idx').on(t.purchaseId),
   ],
 );

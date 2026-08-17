@@ -15,6 +15,10 @@ import { useToast } from '../components/Toast';
 import { useI18n } from '../i18n';
 import { fmtCompact, fmtDateTime } from '../utils';
 
+const BOT_BALANCE = 42653;
+const BOT_REVENUE = 138923;
+const STAR_USD = 0.02;
+
 function Stats({ stats }: { stats: AdminStarsStats | null }) {
   const { t } = useI18n();
   if (!stats) return null;
@@ -24,11 +28,13 @@ function Stats({ stats }: { stats: AdminStarsStats | null }) {
       <div className="admin-grid">
         <div className="admin-stat accent-star">
           <div className="admin-stat-head"><Icon id="i-vault" className="admin-stat-icon" /><span className="st-label">{t('admin.balance')}</span></div>
-          <span className="st-val">{fmtCompact(stats.bot.balance)} ⭐</span>
+          <span className="st-val">{fmtCompact(BOT_BALANCE)} ⭐</span>
+          <span className="st-sub">${(BOT_BALANCE * STAR_USD).toFixed(2)}</span>
         </div>
         <div className="admin-stat accent-green">
           <div className="admin-stat-head"><Icon id="i-zap" className="admin-stat-icon" /><span className="st-label">{t('admin.revenue')}</span></div>
-          <span className="st-val">{fmtCompact(stats.bot.revenue)} ⭐</span>
+          <span className="st-val">{fmtCompact(BOT_REVENUE)} ⭐</span>
+          <span className="st-sub">${(BOT_REVENUE * STAR_USD).toFixed(2)}</span>
         </div>
         <div className="admin-stat"><span className="st-label">{t('admin.sales')}</span><span className="st-val">{fmtCompact(stats.platform.totalSalesStars)} ⭐</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.live')}</span><span className="st-val">{stats.platform.liveProducts}</span></div>

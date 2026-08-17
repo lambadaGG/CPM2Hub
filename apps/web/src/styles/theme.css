@@ -1237,7 +1237,8 @@ img.ab-photo {
 .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; }
 .stat + .stat { border-left: 1px solid var(--line); }
 .st-label { font-size: 9px; letter-spacing: 1.5px; color: var(--sub); font-weight: 700; }
-.st-val { font-size: 15px; font-weight: 800; }
+.st-val   { font-size: 15px; font-weight: 800; }
+.st-sub   { font-size: 11px; color: var(--faint); font-weight: 500; margin-top: -1px; }
 
 /* ---------- Gearbox (new design) ---------- */
 .gbox-inputs { display: flex; gap: 10px; margin-bottom: 12px; }

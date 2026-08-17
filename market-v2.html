@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearMarket v2 — категории + геймификация</title>
+<style>
+:root{
+  --bg:#0A0A0A;
+  --card:#1C1C1E;
+  --card-2:#242426;
+  --text:#FFFFFF;
+  --text-2:#98989E;
+  --text-3:#636366;
+  --blue:#2AABEE;
+  --green:#30D158;
+  --yellow:#FFD60A;
+  --red:#FF453A;
+  --r:16px;
+  --r-sm:12px;
+  --r-xs:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",system-ui,sans-serif;
+  background:radial-gradient(120% 100% at 50% 0%,#131318 0%,#060608 55%,#020203 100%);
+  color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:20px;
+  -webkit-font-smoothing:antialiased;
+}
+.present{
+  color:#636366;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  margin-bottom:16px;display:flex;align-items:center;gap:10px;
+}
+.present b{color:#fff;font-weight:600;letter-spacing:.02em;text-transform:none}
+.present .sep{width:1px;height:12px;background:rgba(255,255,255,.15)}
+
+.phone{
+  width:406px;height:806px;border-radius:58px;background:#000;
+  position:relative;padding:9px;flex-shrink:0;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06),0 50px 110px -20px rgba(0,0,0,.85);
+}
+.screen{
+  width:100%;height:100%;border-radius:50px;background:var(--bg);
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.5);
+}
+.island{
+  position:absolute;top:9px;left:50%;transform:translateX(-50%);
+  width:112px;height:31px;border-radius:18px;background:#000;
+  border:1px solid rgba(255,255,255,.07);z-index:60;
+}
+.statusbar{
+  height:54px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px 0 32px;position:relative;z-index:55;
+}
+.statusbar .time{font-size:15px;font-weight:600;letter-spacing:.02em}
+.statusbar .sys{display:flex;align-items:center;gap:5px}
+.sb{display:flex;align-items:flex-end;gap:1.5px}
+.sb i{width:3px;background:#fff;border-radius:1px;display:block}
+.sb i:nth-child(1){height:4px}.sb i:nth-child(2){height:6px}.sb i:nth-child(3){height:8px}.sb i:nth-child(4){height:10px}
+.sb i:nth-child(4){opacity:.4}
+
+.scroll{
+  flex:1;overflow-y:auto;overflow-x:hidden;padding:0 16px 26px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.scroll::-webkit-scrollbar{display:none}
+
+.icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.icon-fill{fill:currentColor;stroke:none}
+
+/* header */
+.screen-h{
+  padding:10px 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.me{display:flex;align-items:center;gap:12px;min-width:0}
+.avatar{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(145deg,#2c2c2e,#17171a);
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.avatar svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.8}
+.lvl{
+  position:absolute;right:-3px;bottom:-3px;min-width:17px;height:17px;padding:0 3px;
+  border-radius:8px;background:#fff;color:#000;font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);
+}
+.who{min-width:0}
+.who .row1{display:flex;align-items:center;gap:6px}
+.who .name{font-size:16px;font-weight:700;letter-spacing:.01em}
+.badge{
+  font-size:9px;font-weight:800;color:#fff;background:#2C2C2E;padding:2px 6px;
+  border-radius:6px;letter-spacing:.06em;
+}
+.badge.pro{background:rgba(48,209,88,.16);color:var(--green)}
+.who .sub{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.balance{
+  display:flex;align-items:center;gap:6px;background:var(--card);
+  padding:9px 13px;border-radius:999px;font-size:14.5px;font-weight:700;flex-shrink:0;
+}
+.balance svg{width:16px;height:16px}
+
+/* daily free card */
+.daily{
+  position:relative;border-radius:20px;overflow:hidden;margin-bottom:16px;
+  background:linear-gradient(135deg,#1F1B0B 0%,#14110A 55%,#0C0B08 100%);
+  border:1px solid rgba(255,214,10,.22);
+  padding:16px;display:flex;align-items:center;gap:14px;
+}
+.daily .d-badge{
+  width:52px;height:52px;border-radius:16px;background:rgba(255,214,10,.14);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.daily .d-badge svg{width:26px;height:26px;stroke:var(--yellow)}
+.daily .d-badge .dot{
+  position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;
+  background:var(--yellow);border:2.5px solid var(--bg);color:#000;
+  font-size:7.5px;font-weight:900;display:flex;align-items:center;justify-content:center;
+}
+.daily .d-txt{flex:1;min-width:0}
+.daily .d-txt .eyb{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--yellow);text-transform:uppercase}
+.daily .d-txt h3{font-size:16px;font-weight:800;margin-top:3px;line-height:1.15}
+.daily .d-txt span{display:block;font-size:11px;color:var(--text-2);margin-top:3px;font-weight:500}
+.daily .d-btn{
+  flex-shrink:0;border:none;background:var(--yellow);color:#000;
+  font-family:inherit;font-size:13px;font-weight:800;padding:11px 15px;border-radius:12px;cursor:pointer;
+  transition:transform .12s ease;
+}
+.daily .d-btn:active{transform:scale(.94)}
+.daily .d-btn.claimed{background:#2C2C2E;color:var(--text-3)}
+
+/* streak row */
+.streaks{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.s-chip{
+  flex:1;min-width:100px;background:var(--card);border-radius:14px;padding:11px 12px;
+  display:flex;align-items:center;gap:9px;
+}
+.s-chip .s-ic{
+  width:32px;height:32px;border-radius:10px;background:#28282B;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.s-chip .s-ic svg{width:16px;height:16px;stroke:rgba(255,255,255,.92)}
+.s-chip .s-ic.fire{background:rgba(255,159,10,.14)}.s-chip .s-ic.fire svg{stroke:#FF9F0A}
+.s-chip .s-ic.gift{background:rgba(255,69,58,.14)}.s-chip .s-ic.gift svg{stroke:var(--red)}
+.s-chip .s-txt b{display:block;font-size:13px;font-weight:800}
+.s-chip .s-txt span{display:block;font-size:9.5px;color:var(--text-2);margin-top:1px;font-weight:500}
+
+/* search + model filter */
+.searchbar{
+  display:flex;align-items:center;gap:9px;background:var(--card);border-radius:13px;
+  padding:11px 13px;margin-bottom:12px;
+}
+.searchbar svg{width:16px;height:16px;stroke:var(--text-3)}
+.searchbar input{
+  flex:1;background:none;border:none;outline:none;color:#fff;
+  font-family:inherit;font-size:14px;font-weight:600;
+}
+.searchbar input::placeholder{color:var(--text-3);font-weight:500}
+.model-btn{
+  display:flex;align-items:center;gap:7px;background:#28282B;border:none;border-radius:9px;
+  color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;padding:8px 11px;cursor:pointer;flex-shrink:0;
+  transition:transform .12s ease;
+}
+.model-btn:active{transform:scale(.95)}
+.model-btn svg{width:13px;height:13px;stroke:#fff}
+
+/* categories horizontal scroll */
+.cats{
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:16px;
+}
+.cats::-webkit-scrollbar{display:none}
+.cat{
+  flex-shrink:0;display:flex;align-items:center;gap:7px;background:var(--card);
+  border:1px solid transparent;border-radius:999px;padding:8px 13px;
+  font-family:inherit;font-size:12.5px;font-weight:700;color:var(--text-2);cursor:pointer;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.cat svg{width:15px;height:15px;stroke:currentColor}
+.cat.active{background:#fff;color:#000}
+.cat .c-new{
+  font-size:8px;font-weight:900;background:var(--green);color:#000;
+  padding:2px 5px;border-radius:5px;letter-spacing:.04em;
+}
+.cat.active .c-new{background:#000;color:#fff}
+
+/* sec title */
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin:22px 2px 12px}
+.sec-title h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.sec-title .more{font-size:12px;color:var(--blue);font-weight:600}
+
+/* tiles */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{
+  background:var(--card);border-radius:var(--r);padding:13px;
+  display:flex;flex-direction:column;position:relative;cursor:pointer;transition:transform .12s ease;
+}
+.tile:active{transform:scale(.975)}
+.tile.hot{background:linear-gradient(145deg,#1E1A0C,#16130A)}
+.tile .num{position:absolute;top:13px;left:13px;font-size:10px;font-weight:700;color:var(--text-3);letter-spacing:.08em;z-index:2}
+.tile .num.top1{color:var(--yellow)}
+.tile .num.top2{color:#C7C7CC}
+.tile .num.top3{color:#D08A4E}
+.tile .wish{
+  position:absolute;top:9px;right:9px;z-index:2;border:none;background:rgba(0,0,0,.35);
+  width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform .12s ease;
+}
+.tile .wish:active{transform:scale(.88)}
+.tile .wish svg{width:14px;height:14px;stroke:#fff;fill:none}
+.tile .wish.on svg{fill:var(--red);stroke:var(--red)}
+.tile .glyph{
+  width:52px;height:52px;border-radius:15px;background:#28282B;
+  display:flex;align-items:center;justify-content:center;margin:22px 0 2px;
+}
+.tile .glyph svg{width:26px;height:26px;stroke:rgba(255,255,255,.92)}
+.tile h3{font-size:13.5px;font-weight:700;line-height:1.25;letter-spacing:.01em;margin-top:2px}
+.tile h3 small{display:block;font-size:11px;font-weight:500;color:var(--text-2);margin-top:1px}
+.tile .meta{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-2);margin-top:7px;font-weight:500}
+.tile .meta svg{width:12px;height:12px;stroke:var(--blue);fill:none}
+.tile .rating{
+  display:flex;align-items:center;gap:2px;font-size:10.5px;font-weight:800;color:#FFD60A;
+}
+.tile .rating svg{width:11px;height:11px;fill:var(--yellow);stroke:none}
+.tile .rating .cnt{color:var(--text-3);font-weight:600}
+.tile .foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:9px}
+.price{font-size:14px;font-weight:800;display:flex;align-items:center;gap:4px}
+.price svg{width:13px;height:13px;fill:#FFD60A;stroke:none}
+.price.free{color:var(--green)}
+.price.old{font-size:11px;color:var(--text-3);text-decoration:line-through;font-weight:600}
+.buy{
+  border:none;background:#fff;color:#000;font-family:inherit;
+  font-size:10.5px;font-weight:700;padding:7px 10px;border-radius:8px;cursor:pointer;
+  transition:transform .12s ease;
+}
+.buy:active{transform:scale(.93)}
+.buy.claim{background:var(--green);color:#000}
+.buy.starter{background:linear-gradient(90deg,#FF9F0A,#FFD60A);color:#000}
+
+/* starter pack banner */
+.starter{
+  margin:20px 0 4px;border-radius:20px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#241708 0%,#161009 60%,#0C0A08 100%);
+  border:1px solid rgba(255,159,10,.28);padding:18px;
+}
+.starter .s-eyb{font-size:10px;font-weight:800;letter-spacing:.16em;color:#FF9F0A;text-transform:uppercase}
+.starter h3{font-size:20px;font-weight:800;margin-top:5px;line-height:1.1}
+.starter .s-list{display:flex;gap:7px;margin:14px 0 16px;flex-wrap:wrap}
+.starter .s-tag{
+  font-size:10.5px;font-weight:700;background:rgba(255,255,255,.08);color:#fff;
+  padding:6px 10px;border-radius:9px;display:flex;align-items:center;gap:5px;
+}
+.starter .s-tag svg{width:11px;height:11px;stroke:var(--green)}
+.starter .s-foot{display:flex;align-items:center;justify-content:space-between}
+.starter .s-price{display:flex;align-items:center;gap:8px}
+.starter .s-price .now{font-size:19px;font-weight:900;display:flex;align-items:center;gap:4px}
+.starter .s-price .now svg{width:15px;height:15px;fill:var(--yellow);stroke:none}
+.starter .s-price .was{font-size:12px;color:var(--text-3);font-weight:600;text-decoration:line-through}
+.starter .s-cta{
+  border:none;background:linear-gradient(90deg,#FF9F0A,#FFD60A);color:#000;
+  font-family:inherit;font-size:14px;font-weight:800;padding:12px 18px;border-radius:13px;cursor:pointer;
+  transition:transform .12s ease;
+}
+.starter .s-cta:active{transform:scale(.95)}
+
+/* escrow P2P promo */
+.p2p{
+  border-radius:20px;padding:16px;margin-top:16px;position:relative;
+  background:linear-gradient(135deg,#0E2330 0%,#0A1B26 60%,#080F14 100%);
+  border:1px solid rgba(42,171,238,.24);
+}
+.p2p .p-eyb{font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--blue);text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.p2p .p-eyb svg{width:13px;height:13px;stroke:var(--blue)}
+.p2p h3{font-size:17px;font-weight:800;margin-top:5px}
+.p2p p{font-size:11.5px;color:var(--text-2);margin-top:4px;line-height:1.45;font-weight:500}
+.p2p .p-badges{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.p2p .p-badge{
+  font-size:9.5px;font-weight:800;color:var(--blue);background:rgba(42,171,238,.12);
+  padding:5px 9px;border-radius:8px;letter-spacing:.04em;
+}
+
+/* tab bar */
+.tabbar{
+  flex-shrink:0;height:66px;padding-bottom:8px;display:flex;align-items:stretch;
+  background:rgba(10,10,10,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  position:relative;z-index:50;
+}
+.tabbar::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);
+}
+.tab{
+  flex:1;background:none;border:none;cursor:pointer;font-family:inherit;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:var(--text-3);
+}
+.tab svg{width:23px;height:23px;transition:color .15s ease}
+.tab .t-lbl{font-size:9px;font-weight:600;letter-spacing:.04em}
+.tab .ind{width:21px;height:3px;border-radius:2px;background:transparent;margin-top:1px;transition:background .15s ease}
+.tab.active{color:#fff}
+.tab.active .ind{background:#fff}
+
+.toast{
+  position:absolute;left:50%;bottom:86px;transform:translateX(-50%) translateY(14px);
+  background:rgba(255,255,255,.95);color:#000;font-size:13px;font-weight:700;
+  padding:11px 18px;border-radius:999px;z-index:80;opacity:0;pointer-events:none;
+  box-shadow:0 12px 34px rgba(0,0,0,.55);white-space:nowrap;
+  transition:opacity .22s ease,transform .22s ease;max-width:88%;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-market" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-tools" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 17.3l6.2 3.7-1.6-7L22 9.2l-7.2-.6L12 2 9.2 8.6 2 9.2l5.4 4.8-1.6 7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.08A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.08a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.03z"/></symbol>
+  <symbol id="i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="M12 12l3.5-3.5"/><path d="M6 9a9 9 0 0 1 12 0"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 22c4.4 0 8-3.6 8-8 0-5-4-8-8-13-4 5-8 8-8 13 0 4.4 3.6 8 8 8z"/><path d="M12 22c1.7 0 3-1.8 3-4 0-2.5-2-3.5-3-5-1 1.5-3 2.5-3 5 0 2.2 1.3 4 3 4z"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+  <symbol id="i-plate" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 10v4M11 10v4M15 10v4M19 10v4"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M3 13l2-6h14l2 6"/><path d="M3 13v6h18v-6"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/><path d="M5 13h14"/></symbol>
+  <symbol id="i-smoke" viewBox="0 0 24 24"><path d="M3 17h14"/><path d="M7 17c0-3 2-3 2-6"/><path d="M13 17c0-3 2-3 2-6"/><path d="M19 14a2 2 0 1 1 0 4h-2"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></symbol>
+  <symbol id="i-shieldcheck" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+</svg>
+
+<div class="present"><b>GearMarket v2</b><span class="sep"></span>категории · затравка · геймификация</div>
+
+<div class="phone" id="phone">
+  <div class="screen">
+    <div class="island"></div>
+    <div class="statusbar">
+      <span class="time">9:41</span>
+      <div class="sys">
+        <div class="sb"><i></i><i></i><i></i><i></i></div>
+        <svg class="icon" style="width:15px;height:15px"><path d="M1 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 12v-4M8 12v-4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2 16l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <svg class="icon" style="width:22px;height:11px"><rect x="1" y="1" width="18" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="2.5" width="13" height="6" rx="1.2" fill="currentColor"/><path d="M21.5 5v2" stroke="currentColor" stroke-width="1.6"/></svg>
+      </div>
+    </div>
+
+    <div class="scroll" id="scrollBody">
+      <section class="screen-view active" id="view-market">
+        <header class="screen-h">
+          <div class="me">
+            <div class="avatar">
+              <svg class="icon"><use href="#i-user"/></svg>
+              <span class="lvl">12</span>
+            </div>
+            <div class="who">
+              <div class="row1"><span class="name">N1KITA</span><span class="badge pro">PRO</span></div>
+              <div class="sub">🔥 7-day streak · +2× stars</div>
+            </div>
+          </div>
+          <div class="balance">
+            <svg class="icon icon-fill" style="width:15px;height:15px;fill:#FFD60A"><use href="#i-star"/></svg>
+            2,450
+          </div>
+        </header>
+
+        <div class="daily">
+          <div class="d-badge">
+            <svg class="icon"><use href="#i-disc"/></svg>
+            <span class="dot">1</span>
+          </div>
+          <div class="d-txt">
+            <div class="eyb">Color of the Day</div>
+            <h3>Free livery code</h3>
+            <span>New every 24h · resets 00:00</span>
+          </div>
+          <button class="d-btn" id="dailyBtn">Claim</button>
+        </div>
+
+        <div class="streaks">
+          <div class="s-chip">
+            <div class="s-ic fire"><svg class="icon"><use href="#i-fire"/></svg></div>
+            <div class="s-txt"><b>7 days</b><span>Daily bonus +30★</span></div>
+          </div>
+          <div class="s-chip">
+            <div class="s-ic gift"><svg class="icon"><use href="#i-gift"/></svg></div>
+            <div class="s-txt"><b>Invite</b><span>+50★ per friend</span></div>
+          </div>
+        </div>
+
+        <div class="searchbar">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input type="text" placeholder="Search liveries, sounds, setups…">
+          <button class="model-btn">R34 <svg class="icon"><use href="#i-cog"/></svg></button>
+        </div>
+
+        <div class="cats" id="cats">
+          <button class="cat active">All</button>
+          <button class="cat"><svg class="icon"><use href="#i-disc"/></svg>Vinyls</button>
+          <button class="cat"><svg class="icon"><use href="#i-gauge"/></svg>Suspension<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-volume"/></svg>Sounds<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-plate"/></svg>Plates<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-car"/></svg>Service<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-smoke"/></svg>Smoke<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-spark"/></svg>Neon</button>
+          <button class="cat"><svg class="icon"><use href="#i-person"/></svg>Character<span class="c-new">NEW</span></button>
+          <button class="cat"><svg class="icon"><use href="#i-gear"/></svg>Gearboxes</button>
+          <button class="cat"><svg class="icon"><use href="#i-type"/></svg>Nicks</button>
+          <button class="cat"><svg class="icon"><use href="#i-gift"/></svg>Bundles</button>
+        </div>
+
+        <div class="sec-title"><h2>Top rated for R34</h2><span class="more">See all</span></div>
+        <div class="grid2">
+          <article class="tile hot">
+            <span class="num top1">#1</span>
+            <button class="wish on" data-wish><svg class="icon"><use href="#i-heart"/></svg></button>
+            <div class="glyph"><svg class="icon"><use href="#i-disc"/></svg></div>
+            <h3>Midnight Purple Wrap<small>R34 GT-R · 2-tone</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.9<span class="cnt">· 382</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>5</span><button class="buy">Buy</button></div>
+          </article>
+          <article class="tile">
+            <span class="num top2">#2</span>
+            <button class="wish" data-wish><svg class="icon"><use href="#i-heart"/></svg></button>
+            <div class="glyph"><svg class="icon"><use href="#i-gauge"/></svg></div>
+            <h3>Drift Angle Kit<small>R34 · camber −3.5°</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.8<span class="cnt">· 217</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>9</span><button class="buy">Buy</button></div>
+          </article>
+          <article class="tile">
+            <span class="num top3">#3</span>
+            <button class="wish" data-wish><svg class="icon"><use href="#i-heart"/></svg></button>
+            <div class="glyph"><svg class="icon"><use href="#i-volume"/></svg></div>
+            <h3>V8 Burble + Turbo<small>Exhaust sound</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.7<span class="cnt">· 168</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>7</span><button class="buy">Buy</button></div>
+          </article>
+          <article class="tile">
+            <span class="num">#4</span>
+            <button class="wish" data-wish><svg class="icon"><use href="#i-heart"/></svg></button>
+            <div class="glyph"><svg class="icon"><use href="#i-plate"/></svg></div>
+            <h3>Custom Plate 「R34Z」<small>Japan style</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.9<span class="cnt">· 96</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>3</span><button class="buy">Buy</button></div>
+          </article>
+        </div>
+
+        <div class="starter">
+          <div class="s-eyb">Starter Pack · −40%</div>
+          <h3>Garage + Sound + Plate</h3>
+          <div class="s-list">
+            <span class="s-tag"><svg class="icon"><use href="#i-check"/></svg>Garage preset</span>
+            <span class="s-tag"><svg class="icon"><use href="#i-check"/></svg>Turbo sound</span>
+            <span class="s-tag"><svg class="icon"><use href="#i-check"/></svg>Custom plate</span>
+          </div>
+          <div class="s-foot">
+            <div class="s-price"><span class="now"><svg><use href="#i-star"/></svg>25</span><span class="was">42</span></div>
+            <button class="s-cta">Get bundle</button>
+          </div>
+        </div>
+
+        <div class="sec-title"><h2>Service liveries</h2><span class="more">See all</span></div>
+        <div class="grid2">
+          <article class="tile">
+            <div class="glyph"><svg class="icon"><use href="#i-car"/></svg></div>
+            <h3>Police Cruiser<small>Patrol mode skin</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.9<span class="cnt">· 540</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>8</span><button class="buy">Buy</button></div>
+          </article>
+          <article class="tile">
+            <div class="glyph"><svg class="icon"><use href="#i-car"/></svg></div>
+            <h3>Taxi Yellow<small>Street mode skin</small></h3>
+            <div class="meta">
+              <span class="rating"><svg><use href="#i-star"/></svg>4.8<span class="cnt">· 311</span></span>
+            </div>
+            <div class="foot"><span class="price"><svg><use href="#i-star"/></svg>8</span><button class="buy">Buy</button></div>
+          </article>
+        </div>
+
+        <div class="p2p">
+          <div class="p-eyb"><svg class="icon"><use href="#i-shieldcheck"/></svg>Escrow for players</div>
+          <h3>Sell cars, accounts &amp; currency safely</h3>
+          <p>Direct trades are full of scams. Initiate a safe trade — the bot holds both sides until both confirm.</p>
+          <div class="p-badges">
+            <span class="p-badge">5% FEE</span>
+            <span class="p-badge">0% FOR PRO</span>
+            <span class="p-badge">1,284 SAFE TRADES</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <nav class="tabbar" id="tabbar">
+      <button class="tab active" data-v="market"><svg class="icon"><use href="#i-market"/></svg><span class="t-lbl">Market</span><span class="ind"></span></button>
+      <button class="tab" data-v="tools"><svg class="icon"><use href="#i-tools"/></svg><span class="t-lbl">Tools</span><span class="ind"></span></button>
+      <button class="tab" data-v="escrow"><svg class="icon"><use href="#i-shield"/></svg><span class="t-lbl">Escrow</span><span class="ind"></span></button>
+      <button class="tab" data-v="profile"><svg class="icon"><use href="#i-user"/></svg><span class="t-lbl">Profile</span><span class="ind"></span></button>
+    </nav>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+var $=function(s,c){return (c||document).querySelector(s)};
+var $$=function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))};
+
+var toastEl=$('#toast'),toastT=null;
+function toast(msg){
+  toastEl.textContent=msg;toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){toastEl.classList.remove('show')},1700);
+}
+
+(function(){
+  var p=$('#phone');
+  var scale=Math.min(1,(window.innerHeight-52)/p.offsetHeight,(window.innerWidth-32)/p.offsetWidth);
+  if(scale<1){p.style.transform='scale('+scale+')';p.style.marginBottom=(-(p.offsetHeight*(1-scale)))+'px';}
+})();
+
+var dailyBtn=$('#dailyBtn'),dailyClaimed=false;
+dailyBtn.addEventListener('click',function(){
+  if(dailyClaimed)return;
+  dailyClaimed=true;
+  dailyBtn.textContent='Claimed';
+  dailyBtn.classList.add('claimed');
+  toast('Livery code copied! See you tomorrow');
+});
+
+$$('.cat').forEach(function(c){
+  c.addEventListener('click',function(){
+    $$('.cat').forEach(function(x){x.classList.remove('active')});
+    c.classList.add('active');
+  });
+});
+
+$$('.wish').forEach(function(w){
+  w.addEventListener('click',function(e){
+    e.stopPropagation();
+    w.classList.toggle('on');
+    toast(w.classList.contains('on')?'Added to wishlist':'Removed from wishlist');
+  });
+});
+</script>
+</body>
+</html>

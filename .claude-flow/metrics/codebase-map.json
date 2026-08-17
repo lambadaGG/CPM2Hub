@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-08-17T08:52:11.422Z",
+  "projectRoot": "E:\\Projects\\CPM2\\CPM2Hub_TMA",
+  "structure": {
+    "hasPackageJson": true,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1786956731422
+}

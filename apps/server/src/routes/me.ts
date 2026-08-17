@@ -4,7 +4,7 @@ import { db } from '../db/index';
 import { dailyClaims, purchases, users, referralRewards } from '../db/schema';
 import { getUser, type AppEnv } from './auth';
 import { isAdminTelegramId } from '../lib/admin';
-import { claimDaily, dateKey, dateKeyOffset, hasClaimedToday, REFERRAL_REWARD_STARS } from '../lib/gamification';
+import { claimDaily, dateKey, dateKeyOffset, generateReferralCode, hasClaimedToday, REFERRAL_REWARD_STARS } from '../lib/gamification';
 
 export const meRoute = new Hono<AppEnv>();
 
@@ -17,6 +17,12 @@ meRoute.get('/me', async (c) => {
   const u = getUser(c);
   const [user] = await db.select().from(users).where(eq(users.id, u.id));
   if (!user) return c.json({ error: 'not_found' }, 404);
+
+  let referralCode = user.referralCode;
+  if (!referralCode) {
+    referralCode = generateReferralCode(u.id);
+    await db.update(users).set({ referralCode }).where(eq(users.id, u.id));
+  }
 
   const [paid] = await db
     .select({
@@ -54,7 +60,7 @@ meRoute.get('/me', async (c) => {
     purchasesCount: paid?.count ?? 0,
     totalSpent: paid?.total ?? 0,
     isAdmin: isAdminTelegramId(user.telegramId),
-    referralCode: user.referralCode ?? '',
+    referralCode,
     referralCount: invites?.n ?? 0,
     streak: user.streak ?? 0,
     dailyClaimed,
@@ -66,6 +72,13 @@ meRoute.get('/me/referral', async (c) => {
   const u = getUser(c);
   const [user] = await db.select().from(users).where(eq(users.id, u.id));
   if (!user) return c.json({ error: 'not_found' }, 404);
+
+  let referralCode = user.referralCode;
+  if (!referralCode) {
+    referralCode = generateReferralCode(u.id);
+    await db.update(users).set({ referralCode }).where(eq(users.id, u.id));
+  }
+
   const [invites] = await db
     .select({ n: count() })
     .from(users)
@@ -75,8 +88,8 @@ meRoute.get('/me/referral', async (c) => {
     .from(referralRewards)
     .where(eq(referralRewards.referrerId, u.id));
   return c.json({
-    code: user.referralCode ?? '',
-    link: referralLink(user.referralCode),
+    code: referralCode,
+    link: referralLink(referralCode),
     count: invites?.n ?? 0,
     rewardStars: REFERRAL_REWARD_STARS,
     totalEarned: earnings?.total ?? 0,

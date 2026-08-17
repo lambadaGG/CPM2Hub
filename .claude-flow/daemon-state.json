@@ -3,33 +3,33 @@
   "startedAt": "2026-08-17T05:52:10.369Z",
   "workers": {
     "map": {
-      "runCount": 14,
-      "successCount": 14,
+      "runCount": 15,
+      "successCount": 15,
       "failureCount": 0,
-      "averageDurationMs": 3.4285714285714284,
-      "lastRun": "2026-08-17T08:52:11.422Z",
-      "lastStartedAt": "2026-08-17T08:52:11.419Z",
-      "nextRun": "2026-08-17T09:07:11.424Z",
+      "averageDurationMs": 3.466666666666667,
+      "lastRun": "2026-08-17T09:07:11.442Z",
+      "lastStartedAt": "2026-08-17T09:07:11.438Z",
+      "nextRun": "2026-08-17T09:22:11.443Z",
       "isRunning": false
     },
     "audit": {
-      "runCount": 20,
-      "successCount": 20,
+      "runCount": 22,
+      "successCount": 22,
       "failureCount": 0,
-      "averageDurationMs": 3.5,
-      "lastRun": "2026-08-17T08:54:11.497Z",
-      "lastStartedAt": "2026-08-17T08:54:11.494Z",
-      "nextRun": "2026-08-17T09:04:11.499Z",
+      "averageDurationMs": 3.4545454545454546,
+      "lastRun": "2026-08-17T09:14:11.523Z",
+      "lastStartedAt": "2026-08-17T09:14:11.521Z",
+      "nextRun": "2026-08-17T09:14:11.515Z",
       "isRunning": false
     },
     "optimize": {
-      "runCount": 14,
-      "successCount": 14,
+      "runCount": 15,
+      "successCount": 15,
       "failureCount": 0,
-      "averageDurationMs": 3.4285714285714284,
-      "lastRun": "2026-08-17T08:56:11.418Z",
-      "lastStartedAt": "2026-08-17T08:56:11.415Z",
-      "nextRun": "2026-08-17T09:11:11.420Z",
+      "averageDurationMs": 3.4,
+      "lastRun": "2026-08-17T09:11:11.436Z",
+      "lastStartedAt": "2026-08-17T09:11:11.433Z",
+      "nextRun": "2026-08-17T09:26:11.438Z",
       "isRunning": false
     },
     "consolidate": {
@@ -49,7 +49,7 @@
       "averageDurationMs": 3.2,
       "lastRun": "2026-08-17T09:00:11.397Z",
       "lastStartedAt": "2026-08-17T09:00:11.395Z",
-      "nextRun": "2026-08-17T09:00:11.380Z",
+      "nextRun": "2026-08-17T09:20:11.399Z",
       "isRunning": false
     },
     "backup": {
@@ -175,5 +175,5 @@
       }
     ]
   },
-  "savedAt": "2026-08-17T09:00:11.397Z"
+  "savedAt": "2026-08-17T09:14:11.523Z"
 }

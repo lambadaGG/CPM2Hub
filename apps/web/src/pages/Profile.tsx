@@ -210,8 +210,12 @@ export function Profile({ user: initial, active }: { user: User | null; active?:
       if (r.link) {
         await copyText(r.link);
         toast(t('market.copied'));
+      } else {
+        toast('Link not available — try again');
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Referral error');
+    }
   };
 
   return (

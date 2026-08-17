@@ -79,20 +79,28 @@ meRoute.get('/me/referral', async (c) => {
     await db.update(users).set({ referralCode }).where(eq(users.id, u.id));
   }
 
-  const [invites] = await db
-    .select({ n: count() })
-    .from(users)
-    .where(eq(users.referredBy, u.id));
-  const [earnings] = await db
-    .select({ total: sql<number>`coalesce(sum(${referralRewards.amountStars}), 0)::int` })
-    .from(referralRewards)
-    .where(eq(referralRewards.referrerId, u.id));
+  let inviteCount = 0;
+  let totalEarned = 0;
+  try {
+    const [invites] = await db
+      .select({ n: count() })
+      .from(users)
+      .where(eq(users.referredBy, u.id));
+    inviteCount = invites?.n ?? 0;
+  } catch { /* referral_rewards may not exist yet */ }
+  try {
+    const [earnings] = await db
+      .select({ total: sql<number>`coalesce(sum(${referralRewards.amountStars}), 0)::int` })
+      .from(referralRewards)
+      .where(eq(referralRewards.referrerId, u.id));
+    totalEarned = earnings?.total ?? 0;
+  } catch { /* referral_rewards table may not exist */ }
   return c.json({
     code: referralCode,
     link: referralLink(referralCode),
-    count: invites?.n ?? 0,
+    count: inviteCount,
     rewardStars: REFERRAL_REWARD_STARS,
-    totalEarned: earnings?.total ?? 0,
+    totalEarned,
   });
 });
 

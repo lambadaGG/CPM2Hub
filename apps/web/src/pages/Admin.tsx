@@ -17,6 +17,7 @@ import { fmtCompact, fmtDateTime } from '../utils';
 
 const BOT_BALANCE = 42653;
 const BOT_REVENUE = 138923;
+const PLATFORM_SALES = 136653;
 const STAR_USD = 0.02;
 
 function Stats({ stats }: { stats: AdminStarsStats | null }) {
@@ -36,7 +37,7 @@ function Stats({ stats }: { stats: AdminStarsStats | null }) {
           <span className="st-val">{fmtCompact(BOT_REVENUE)} ⭐</span>
           <span className="st-sub">${(BOT_REVENUE * STAR_USD).toFixed(2)}</span>
         </div>
-        <div className="admin-stat"><span className="st-label">{t('admin.sales')}</span><span className="st-val">{fmtCompact(stats.platform.totalSalesStars)} ⭐</span></div>
+        <div className="admin-stat"><span className="st-label">{t('admin.sales')}</span><span className="st-val">{fmtCompact(PLATFORM_SALES)} ⭐</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.live')}</span><span className="st-val">{stats.platform.liveProducts}</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.pendingBuys')}</span><span className="st-val">{stats.platform.pendingBuys}</span></div>
         <div className="admin-stat"><span className="st-label">{t('admin.pendingTopups')}</span><span className="st-val">{stats.platform.pendingTopups}</span></div>

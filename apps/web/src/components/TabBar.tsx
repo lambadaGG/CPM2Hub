@@ -1,12 +1,13 @@
 import { Icon } from './Icons';
 import { useI18n } from '../i18n';
 
-export type TabId = 'market' | 'tools' | 'escrow' | 'profile' | 'sell' | 'admin';
+export type TabId = 'home' | 'garage' | 'explore' | 'tools' | 'profile' | 'sell' | 'escrow' | 'admin';
 
 const TABS: Array<{ id: TabId; labelKey: string; icon: string }> = [
-  { id: 'market', labelKey: 'tab.market', icon: 'i-market' },
+  { id: 'home', labelKey: 'tab.home', icon: 'i-home' },
+  { id: 'garage', labelKey: 'tab.garage', icon: 'i-wrench' },
+  { id: 'explore', labelKey: 'tab.explore', icon: 'i-compass' },
   { id: 'tools', labelKey: 'tab.tools', icon: 'i-tools' },
-  { id: 'escrow', labelKey: 'tab.escrow', icon: 'i-shield' },
   { id: 'profile', labelKey: 'tab.profile', icon: 'i-user' },
 ];
 

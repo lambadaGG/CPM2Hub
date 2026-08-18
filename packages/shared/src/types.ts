@@ -146,3 +146,103 @@ export interface BuyResponse {
 export interface BuyRequest {
   productId: number;
 }
+
+// ── Builds ──
+
+export interface BuildSpecs {
+  hp?: number | null;
+  torque?: number | null;
+  zero100?: number | null;
+  maxSpeed?: number | null;
+  gearbox?: string | null;
+  suspension?: string | null;
+  camber?: number | null;
+  rideHeight?: number | null;
+  tires?: string | null;
+  engine?: string | null;
+  visual?: string | null;
+  vinyl?: string | null;
+}
+
+export interface Build {
+  id: number;
+  authorId: number;
+  title: string;
+  carModel: string;
+  specs: BuildSpecs;
+  screenshots: string[];
+  likesCount: number;
+  ratingAvg: number;
+  ratingCount: number;
+  featured: boolean;
+  createdAt: number;
+  author?: { id: number; username: string | null; firstName: string; telegramId: number } | null;
+  liked?: boolean;
+  myRating?: number | null;
+}
+
+export interface CreateBuildRequest {
+  title: string;
+  carModel: string;
+  specs: BuildSpecs;
+  screenshots?: string[];
+}
+
+export interface PatchBuildRequest {
+  title?: string;
+  carModel?: string;
+  specs?: BuildSpecs;
+  screenshots?: string[];
+  featured?: boolean;
+}
+
+export interface BuildRateResponse {
+  ratingAvg: number;
+  ratingCount: number;
+  value: number;
+}
+
+// ── Events ──
+
+export type EventType =
+  | 'app_open'
+  | 'build_view'
+  | 'build_like'
+  | 'build_unlike'
+  | 'build_rate'
+  | 'build_publish'
+  | 'share_click';
+
+export interface Event {
+  id: number;
+  type: EventType;
+  userId: number | null;
+  buildId: number | null;
+  referralId: number | null;
+  source: string | null;
+  deepLink: string | null;
+  campaign: string | null;
+  createdAt: number;
+}
+
+export interface TrackEventRequest {
+  type: EventType;
+  buildId?: number;
+  source?: string;
+  deepLink?: string;
+  campaign?: string;
+}
+
+// ── Creator profile ──
+
+export interface CreatorProfile {
+  id: number;
+  username: string | null;
+  firstName: string;
+  telegramId: number;
+  buildsCount: number;
+  likesCount: number;
+  ratingAvg: number;
+  ratingCount: number;
+  createdAt: number;
+}

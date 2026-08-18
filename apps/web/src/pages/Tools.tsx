@@ -332,9 +332,11 @@ function TuningCarousel() {
   );
 }
 
-export function Tools() {
+export function Tools({ tool }: { tool?: string } = {}) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<'tuning' | 'style'>('tuning');
+  const styleTools = ['color', 'nick'];
+  const initialTab = tool && styleTools.includes(tool) ? 'style' : 'tuning';
+  const [tab, setTab] = useState<'tuning' | 'style'>(initialTab);
   return (
     <div className="screen tools">
       <header className="top">

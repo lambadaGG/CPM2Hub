@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, bigint, serial, index, uniqueIndex, jsonb, numeric, pgView } from 'drizzle-orm/pg-core';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 export const users = pgTable(
@@ -198,5 +198,90 @@ export const referralRewards = pgTable(
     index('referral_rewards_referrer_idx').on(t.referrerId),
     index('referral_rewards_buyer_idx').on(t.buyerId),
     uniqueIndex('referral_rewards_purchase_idx').on(t.purchaseId),
+  ],
+);
+
+// ── Builds (v1 community hub) ──
+
+export const builds = pgTable(
+  'builds',
+  {
+    id: serial('id').primaryKey(),
+    authorId: integer('author_id')
+      .notNull()
+      .references(() => users.id),
+    title: text('title').notNull(),
+    carModel: text('car_model').notNull(),
+    specs: jsonb('specs').$type<Record<string, unknown>>().notNull().default({}),
+    screenshots: text('screenshots').array().notNull().default([]),
+    likesCount: integer('likes_count').notNull().default(0),
+    ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 }).notNull().default('0'),
+    ratingCount: integer('rating_count').notNull().default(0),
+    featured: boolean('featured').notNull().default(false),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    index('builds_author_idx').on(t.authorId),
+    index('builds_likes_idx').on(t.likesCount),
+  ],
+);
+
+export const buildLikes = pgTable(
+  'build_likes',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    buildId: integer('build_id')
+      .notNull()
+      .references(() => builds.id),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('build_likes_user_build_idx').on(t.userId, t.buildId),
+    index('build_likes_build_idx').on(t.buildId),
+  ],
+);
+
+export const buildRatings = pgTable(
+  'build_ratings',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    buildId: integer('build_id')
+      .notNull()
+      .references(() => builds.id),
+    value: integer('value').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('build_ratings_user_build_idx').on(t.userId, t.buildId),
+    index('build_ratings_build_idx').on(t.buildId),
+  ],
+);
+
+// ── Events (analytics, v1 raw storage) ──
+
+export const events = pgTable(
+  'events',
+  {
+    id: serial('id').primaryKey(),
+    type: text('type').notNull(),
+    userId: integer('user_id').references(() => users.id),
+    buildId: integer('build_id').references(() => builds.id),
+    referralId: integer('referral_id').references(() => users.id),
+    source: text('source'),
+    deepLink: text('deep_link'),
+    campaign: text('campaign'),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    index('events_type_idx').on(t.type),
+    index('events_user_idx').on(t.userId),
+    index('events_build_idx').on(t.buildId),
+    index('events_created_idx').on(t.createdAt),
   ],
 );

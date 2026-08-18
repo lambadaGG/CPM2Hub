@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { BuyRequest, BuyResponse, Category, CreateProductRequest, DailyClaimResponse, MeResponse, ModerationStatus, Params, PatchProductRequest, PayResponse, Product, ProductMedia, Purchase, RateResponse, Trade } from '@gm/shared';
+import type { BuyRequest, BuyResponse, Category, CreateProductRequest, DailyClaimResponse, MeResponse, ModerationStatus, Params, PatchProductRequest, PayResponse, Product, ProductMedia, Purchase, RateResponse, Trade, Build, CreateBuildRequest, PatchBuildRequest, BuildRateResponse, TrackEventRequest, CreatorProfile } from '@gm/shared';
 
 export { api } from './client';
 export type {
@@ -22,6 +22,12 @@ export type {
   Trade,
   TradeStatus,
   User,
+  Build,
+  CreateBuildRequest,
+  PatchBuildRequest,
+  BuildRateResponse,
+  TrackEventRequest,
+  CreatorProfile,
 } from '@gm/shared';
 export { ALL_CATEGORIES, CATEGORY_META, NEW_CATEGORIES, PARAM_FIELDS, RISK_BY_CATEGORY, SELL_CATEGORIES } from '@gm/shared';
 
@@ -128,3 +134,30 @@ export interface ReferralLeaderboardEntry {
 }
 
 export const getAdminReferral = () => api<{ totalUsers: number; totalReferred: number; totalRewards: number; rewardCount: number; referredPercent: number }>('/admin/referral');
+
+// ── Builds ──
+
+export const getBuilds = (params?: { authorId?: number; featured?: boolean }) => {
+  const q = new URLSearchParams();
+  if (params?.authorId) q.set('authorId', String(params.authorId));
+  if (params?.featured) q.set('featured', '1');
+  const qs = q.toString();
+  return api<Build[]>(`/builds${qs ? `?${qs}` : ''}`);
+};
+export const getBuild = (id: number) => api<Build>(`/builds/${id}`);
+export const createBuild = (body: CreateBuildRequest) =>
+  api<Build>('/builds', { method: 'POST', body: JSON.stringify(body) });
+export const patchBuild = (id: number, body: PatchBuildRequest) =>
+  api<Build>(`/builds/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+export const deleteBuild = (id: number) =>
+  api<{ ok: boolean }>(`/builds/${id}`, { method: 'DELETE' });
+export const toggleBuildLike = (id: number) =>
+  api<{ liked: boolean; likesCount: number }>(`/builds/${id}/like`, { method: 'POST' });
+export const rateBuild = (id: number, value: number) =>
+  api<BuildRateResponse>(`/builds/${id}/rate`, { method: 'POST', body: JSON.stringify({ value }) });
+export const getCreator = (id: number) => api<CreatorProfile>(`/creators/${id}`);
+
+// ── Events ──
+
+export const trackEvent = (body: TrackEventRequest) =>
+  api<{ ok: boolean }>('/events', { method: 'POST', body: JSON.stringify(body) });
